@@ -11,12 +11,7 @@ import type { Transition, Variants } from "framer-motion";
   Everything is off under prefers-reduced-motion (see usePlay).
 */
 
-export const dur = { micro: 0.15, standard: 0.3, big: 0.7 } as const;
-export const stagger = 0.06;
-export const ease: [number, number, number, number] = [0.22, 1, 0.36, 1];
-
-export const spring: Transition = { type: "spring", stiffness: 260, damping: 24 };
-export const springSoft: Transition = { type: "spring", stiffness: 120, damping: 20 };
+const ease: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
 /** False when the person asked for reduced motion. Gate every moment on it. */
 export function usePlay(): boolean {
@@ -38,12 +33,6 @@ export const trailDraw = (to = 1, duration = 1.6): Variants => ({
   show: { strokeDashoffset: 0, transition: { duration, ease: "easeInOut" } },
 });
 
-// pathLength flavour, used by the existing roadmap road.
-export const drawPath: Variants = {
-  hidden: { pathLength: 0, opacity: 0 },
-  show: { pathLength: 1, opacity: 1, transition: { duration: 1.4, ease: "easeInOut" } },
-};
-
 /* ---------- Moment 2: unlock chain ---------- */
 
 export const unlockChain = (gap = 0.3, delay = 0): Variants => ({
@@ -64,22 +53,8 @@ export const sealStamp: Variants = {
 };
 
 /* ---------- Retired ----------
-  Pages built before the trail-map direction still import these. They now do
-  nothing, so content shows at once. Delete them as each page is rebuilt.
+  The dashboard still imports this. It does nothing, so content shows at once.
+  Delete it when the dashboard is rebuilt.
 */
-const none: Variants = { hidden: {}, show: {} };
 /** @deprecated No fade-up entrances. */
-export const fadeUp: Variants = none;
-/** @deprecated */
-export const pop: Variants = none;
-/** @deprecated */
-export const unlockBurst: Variants = none;
-/** @deprecated No ambient pulses. */
-export const pulseAnimate = {};
-/** @deprecated */
-export const pulseTransition: Transition = {};
-/** @deprecated */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const container = (_delay = 0): Variants => none;
-/** @deprecated No hover-lift on cards. */
-export const hoverLift = {};
+export const fadeUp: Variants = { hidden: {}, show: {} };
