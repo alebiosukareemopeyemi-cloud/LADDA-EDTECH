@@ -18,12 +18,7 @@ const MENU: { label: string; href: string | null }[] = [
 ];
 
 function Wordmark({ className = "" }: { className?: string }) {
-  return (
-    <span className={`inline-flex items-baseline gap-0.5 font-heading font-extrabold ${className}`}>
-      Ladda
-      <span className="size-1.5 rounded-full bg-brand" aria-hidden="true" />
-    </span>
-  );
+  return <span className={`font-display text-2xl font-bold leading-none ${className}`}>Ladda</span>;
 }
 
 export default function AppShell() {
@@ -93,10 +88,10 @@ export default function AppShell() {
 
   return (
     <>
-      {/* Floating glass nav: one of the three glass surfaces. */}
-      <header className="pointer-events-none fixed inset-x-0 top-2 z-40 flex justify-center">
-        <nav aria-label="Main" className="nav-float glass">
-          <div className="flex items-center gap-1">
+      {/* In the flow and sticky, so it takes its own 56px and never covers the page. */}
+      <header className="topbar">
+        <nav aria-label="Main" className="topbar-inner">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setMenuOpen(true)}
               aria-label="Open menu"
@@ -104,12 +99,12 @@ export default function AppShell() {
               className="nav-link size-11 justify-center !p-0"
             >
               <span className="flex flex-col gap-1">
-                <span className="h-0.5 w-4 rounded bg-foreground" />
-                <span className="h-0.5 w-4 rounded bg-foreground" />
-                <span className="h-0.5 w-2.5 rounded bg-foreground" />
+                <span className="h-0.5 w-5 rounded bg-text" />
+                <span className="h-0.5 w-5 rounded bg-text" />
+                <span className="h-0.5 w-3 rounded bg-text" />
               </span>
             </button>
-            <Link href="/dashboard" className="px-2 text-lg" aria-label="Ladda home">
+            <Link href="/dashboard" aria-label="Ladda home" className="rounded-full px-1">
               <Wordmark />
             </Link>
           </div>
@@ -132,7 +127,7 @@ export default function AppShell() {
               onClick={() => setProfileOpen((v) => !v)}
               aria-label="Profile menu"
               aria-expanded={profileOpen}
-              className="flex size-11 items-center justify-center rounded-full border border-border bg-s3 font-heading font-bold text-primary transition-transform hover:scale-105 active:scale-95"
+              className="flex size-11 items-center justify-center rounded-full border border-line-strong bg-understory font-display text-lg font-bold text-volt"
             >
               {initial ?? (
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -145,30 +140,28 @@ export default function AppShell() {
             <AnimatePresence>
               {profileOpen && (
                 <motion.div
-                  initial={{ opacity: 0, y: -8, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                  transition={{ duration: 0.15 }}
-                  className="surface-3 absolute right-0 top-14 w-64 p-2"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.12 }}
+                  className="surface-raised absolute right-0 top-13 z-50 w-64 p-2"
                 >
-                  {email && (
-                    <p className="truncate px-4 py-3 text-sm text-muted-foreground">{email}</p>
-                  )}
-                  <span className="flex items-center justify-between rounded-full px-4 py-2.5 text-sm text-muted-foreground/70">
+                  {email && <p className="truncate px-4 py-3 text-sm text-text-mute">{email}</p>}
+                  <span className="flex items-center justify-between rounded-full px-4 py-2.5 text-sm text-text-mute">
                     Profile <span className="badge badge-locked">Coming soon</span>
                   </span>
-                  <span className="flex items-center justify-between rounded-full px-4 py-2.5 text-sm text-muted-foreground/70">
+                  <span className="flex items-center justify-between rounded-full px-4 py-2.5 text-sm text-text-mute">
                     Settings <span className="badge badge-locked">Coming soon</span>
                   </span>
                   <Link
                     href="/verify/demo-001"
-                    className="block rounded-full px-4 py-2.5 text-sm transition-colors hover:bg-foreground/5"
+                    className="block rounded-full px-4 py-2.5 text-sm transition-colors hover:bg-line"
                   >
                     Sample credential
                   </Link>
                   <button
                     onClick={signOut}
-                    className="mt-1 block w-full rounded-full px-4 py-2.5 text-left text-sm text-primary transition-colors hover:bg-foreground/5"
+                    className="mt-1 block w-full rounded-full px-4 py-2.5 text-left text-sm text-volt transition-colors hover:bg-line"
                   >
                     Sign out
                   </button>
@@ -178,31 +171,31 @@ export default function AppShell() {
           </div>
         </nav>
       </header>
-      <div className="h-16" aria-hidden="true" />
 
       <AnimatePresence>
         {menuOpen && (
           <>
             <motion.div
-              className="fixed inset-0 z-50 bg-black/60"
+              className="fixed inset-0 z-50 bg-black/70"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
               onClick={() => setMenuOpen(false)}
               aria-hidden="true"
             />
             <motion.nav
               role="dialog"
               aria-label="Menu"
-              className="fixed bottom-0 left-0 top-0 z-50 flex w-72 flex-col border-r border-border bg-s3 p-6 shadow-[var(--shadow-s3)]"
+              className="fixed bottom-0 left-0 top-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-line-strong bg-understory p-6"
               initial={{ x: -300 }}
               animate={{ x: 0 }}
               exit={{ x: -300 }}
-              transition={{ type: "spring", stiffness: 300, damping: 32 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
             >
               <div className="mb-8 flex items-center justify-between">
-                <Wordmark className="text-xl" />
-                <button onClick={() => setMenuOpen(false)} aria-label="Close menu" className="btn btn-glass btn-sm">
+                <Wordmark className="text-3xl" />
+                <button onClick={() => setMenuOpen(false)} aria-label="Close menu" className="btn btn-secondary">
                   Close
                 </button>
               </div>
@@ -216,9 +209,7 @@ export default function AppShell() {
                           href={m.href}
                           aria-current={active ? "page" : undefined}
                           className={`block rounded-full px-5 py-3 font-medium transition-colors ${
-                            active
-                              ? "bg-primary text-primary-foreground"
-                              : "text-foreground/80 hover:bg-foreground/5"
+                            active ? "bg-volt text-[#04110a]" : "text-text-soft hover:bg-line"
                           }`}
                         >
                           {m.label}
@@ -226,7 +217,7 @@ export default function AppShell() {
                       ) : (
                         <span
                           aria-disabled="true"
-                          className="flex items-center justify-between rounded-full px-5 py-3 text-muted-foreground/70"
+                          className="flex items-center justify-between rounded-full px-5 py-3 text-text-mute"
                         >
                           {m.label} <span className="badge badge-locked">Coming soon</span>
                         </span>
