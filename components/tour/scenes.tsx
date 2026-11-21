@@ -177,7 +177,9 @@ export function CredentialScene() {
           hours={c.hours}
           projects={c.projects}
           issued={c.issuedLabel}
+          issuedIso={c.payload.issuedAt}
           id={c.payload.id}
+          summary={c.summary}
           stampKey="step6"
         />
       </div>
@@ -201,7 +203,9 @@ export function EmployerScene({ hours, verdict }: { hours: string; verdict: Verd
           hours={hours || "?"}
           projects={c.projects}
           issued={c.issuedLabel}
+          issuedIso={c.payload.issuedAt}
           id={c.payload.id}
+          status={bad ? "invalid" : "valid"}
           stampKey="step7"
         />
         <article
