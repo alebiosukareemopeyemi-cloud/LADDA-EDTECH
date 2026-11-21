@@ -51,10 +51,3 @@ export const sealStamp: Variants = {
   hidden: { scale: 1.7, rotate: -16, opacity: 0 },
   show: { scale: 1, rotate: 0, opacity: 1, transition: sealTransition },
 };
-
-/* ---------- Retired ----------
-  The dashboard still imports this. It does nothing, so content shows at once.
-  Delete it when the dashboard is rebuilt.
-*/
-/** @deprecated No fade-up entrances. */
-export const fadeUp: Variants = { hidden: {}, show: {} };

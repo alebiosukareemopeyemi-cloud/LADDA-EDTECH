@@ -125,7 +125,6 @@
   --node-locked: #4f675a;
 
   --cta-gradient: linear-gradient(100deg, #22a06b, #bef264);
-  --brand-gradient: linear-gradient(135deg, #047857, #bef264);
 
   --radius: 1.25rem;
   --r-surface: 1.25rem;
@@ -199,28 +198,6 @@
   font-size: 0.85em;
   font-variant-numeric: tabular-nums;
 }
-/* Plain sentence-case label (kept for existing pages). */
-@utility tag-label {
-  font-family: var(--font-body);
-  font-size: 0.875rem;
-  font-weight: 500;
-  line-height: 1.3;
-}
-
-/* ---------- Brand helpers kept for existing pages ---------- */
-@utility bg-brand {
-  background-image: var(--brand-gradient);
-}
-@utility text-brand {
-  background-image: var(--brand-gradient);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-@utility glow {
-  box-shadow: 0 8px 28px -12px rgb(190 242 100 / 0.4);
-}
-
 /* ---------- Surfaces ---------- */
 
 /* Flat panel: understory with a hairline. No glass, no glow. */

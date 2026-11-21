@@ -9,7 +9,7 @@ const HOME = "/dashboard";
 const ENFORCE_INTAKE = true;
 
 // /design and /dev are throwaway pages; remove them here when you delete them.
-const PUBLIC_PREFIXES = ["/auth", "/verify", "/tour", "/api/demo", "/api/verify", "/api/dev", "/design", "/dev"];
+const PUBLIC_PREFIXES = ["/auth", "/verify", "/tour", "/api/demo", "/api/verify", "/api/dev", "/design"];
 
 function isPublic(path: string) {
   return (
