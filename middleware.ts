@@ -6,7 +6,7 @@ const HOME = "/dashboard";
 
 // Flip to true only after Intake is confirmed to save a profile row,
 // or everyone gets stuck at /intake.
-const ENFORCE_INTAKE = false;
+const ENFORCE_INTAKE = true;
 
 // /design and /dev are throwaway pages; remove them here when you delete them.
 const PUBLIC_PREFIXES = ["/auth", "/verify", "/api/demo", "/api/verify", "/design", "/dev"];
