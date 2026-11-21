@@ -1,17 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CertificatesPanel } from "@/components/roadmap/CertificatesPanel";
-import { useParams, useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Check, ExternalLink } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { Check, Clock, ExternalLink, Lock, Wrench } from "lucide-react";
 import { getNodeDetail } from "@/lib/api/client";
-import type { NodeDetail, NodeStatus, ProjectBrief, Resource, RoadmapNode, StepId } from "@/lib/contract";
-import { RoadmapRoad } from "@/components/roadmap/RoadmapRoad";
-import { CountUp } from "@/components/roadmap/CountUp";
-import { fadeUp, spring } from "@/lib/motion";
-
-const stepTitle: Record<StepId, string> = { learn: "Learn", build: "Build", test: "Test" };
+import type { NodeDetail, NodeStatus, ProjectBrief, Resource, StepId } from "@/lib/contract";
+import { CertificatesPanel } from "@/components/roadmap/CertificatesPanel";
+import { usePlay } from "@/lib/motion";
 
 const statusText: Record<NodeStatus, string> = {
   todo: "Not started",
@@ -21,35 +17,9 @@ const statusText: Record<NodeStatus, string> = {
 };
 
 const PASS_MARK = 70;
+const STEP_MS = 650;
 
-// Turn the 3 steps into pseudo-nodes so the same road component can draw them.
-function toStops(d: NodeDetail, approved: boolean): RoadmapNode[] {
-  return d.steps.map((s) => {
-    let status: NodeStatus =
-      s.state === "done"
-        ? "verified"
-        : s.state === "open" && s.id === d.node.nextStep
-          ? "in_progress"
-          : "todo";
-    if (approved && s.id === "build") status = "verified";
-    return {
-      id: s.id,
-      title: stepTitle[s.id],
-      blurb: "",
-      phase: d.node.phase,
-      status,
-      source: null,
-      locked: s.state === "locked" || s.state === "coming_soon",
-      blockedBy: [],
-      prereqs: [],
-      nextStep: d.node.nextStep,
-      hours: 0,
-      isStretch: false,
-    };
-  });
-}
-
-// ---- Mock review (swapped for the real AI review in Step 9) ----
+// ---- Mock review (swapped for the real review later) ----
 type Review = { approved: boolean; score: number; scores: number[]; feedback: string };
 
 function fakeReview(url: string, count: number): Review {
@@ -66,60 +36,50 @@ function fakeReview(url: string, count: number): Review {
     scores,
     feedback: approved
       ? "Solid structure and a clear README. Nice work."
-      : "Some criteria are not met yet. Fix the low scores and submit again.",
+      : "Some checks are not met yet. Fix the ones marked below, then submit again.",
   };
 }
 
-// ---- Learn panel ----
+// ---- Learn ----
 function LearnPanel({ resources, hasRepo }: { resources: Resource[]; hasRepo: boolean }) {
   return (
     <div>
-      <p className="tag-label text-muted-foreground">Learn step</p>
-      <h2 className="mt-2 text-xl font-bold">Resources</h2>
-
+      <h2 className="font-display text-3xl font-bold leading-none">Resources</h2>
       {resources.length === 0 ? (
-        <p className="mt-3 text-sm text-muted-foreground">
-          Hand-checked resources for this skill are coming soon.
+        <p className="mt-3 text-text-soft">
+          Hand-checked resources for this skill are on the way. You can start the project from the Build step now.
         </p>
       ) : (
-        <ul className="mt-4 grid gap-3 md:grid-cols-2">
-          {resources.map((r, i) => (
-            <motion.li
-              key={r.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ ...spring, delay: i * 0.06 }}
-            >
+        <ul className="mt-4 divide-y divide-line border-y border-line">
+          {resources.map((r) => (
+            <li key={r.id}>
               <a
                 href={r.url}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-between gap-3 rounded-full border px-5 py-3 text-sm transition hover:border-primary"
+                className="flex items-center justify-between gap-4 py-4 hover:underline"
               >
                 <span className="font-medium">{r.title}</span>
-                <span className="flex shrink-0 items-center gap-2">
-                  <span className="tag-label rounded-full border px-2 py-0.5">{r.cost}</span>
-                  <ExternalLink className="size-4 text-muted-foreground" />
+                <span className="flex shrink-0 items-center gap-3 text-sm text-text-mute">
+                  {r.cost === "free" ? "Free" : "Paid"}
+                  <ExternalLink className="size-4" aria-hidden="true" />
+                  <span className="sr-only">Opens in a new tab</span>
                 </span>
               </a>
-            </motion.li>
+            </li>
           ))}
         </ul>
       )}
-
       {hasRepo && (
-        <button
-          disabled
-          className="tag-label mt-5 cursor-not-allowed rounded-full border px-5 py-3 opacity-50"
-        >
-          Study it in a real repo · coming soon
-        </button>
+        <p className="mt-4 text-sm text-text-mute">Study it in a real repo is coming soon.</p>
       )}
     </div>
   );
 }
 
-// ---- Build panel ----
+// ---- Build ----
+type Phase = "idle" | "pending" | "done";
+
 function BuildPanel({
   project,
   suggested,
@@ -131,149 +91,194 @@ function BuildPanel({
   approved: boolean;
   onApproved: () => void;
 }) {
+  const play = usePlay();
   const [url, setUrl] = useState("");
-  const [phase, setPhase] = useState<"idle" | "pending" | "done">("idle");
+  const [phase, setPhase] = useState<Phase>("idle");
   const [review, setReview] = useState<Review | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [resolved, setResolved] = useState(0);
+  const [problem, setProblem] = useState<string | null>(null);
+  const timers = useRef<number[]>([]);
+
+  useEffect(() => {
+    const t = timers.current;
+    return () => t.forEach((id) => window.clearTimeout(id));
+  }, []);
 
   if (!project) {
-    return <p className="text-sm text-muted-foreground">No project is assigned for this skill yet.</p>;
+    return (
+      <p className="text-text-soft">
+        No project is assigned to this skill yet. Check back after the next catalog update.
+      </p>
+    );
   }
+  const brief = project;
+  const n = brief.criteria.length;
 
-  async function submit() {
-    if (!project) return;
+  function submit() {
     const v = url.trim();
     if (!/^https:\/\/github\.com\/[^\s/]+\/[^\s/]+/i.test(v)) {
-      setError("Paste a GitHub repo link, like https://github.com/you/project");
+      setProblem("Paste a full GitHub repo link that starts with https://github.com/, for example https://github.com/you/project.");
       return;
     }
-    setError(null);
-    setPhase("pending");
-    await new Promise((r) => setTimeout(r, 2500));
-    const result = fakeReview(v, project.criteria.length);
+    setProblem(null);
+    const result = fakeReview(v, n);
     setReview(result);
-    setPhase("done");
-    if (result.approved) onApproved();
+    timers.current.forEach((id) => window.clearTimeout(id));
+    timers.current = [];
+
+    const finish = () => {
+      setResolved(n);
+      setPhase("done");
+      if (result.approved) onApproved();
+    };
+    if (!play) return finish();
+
+    // The checks resolve one by one.
+    setPhase("pending");
+    setResolved(0);
+    for (let i = 1; i <= n; i++) {
+      timers.current.push(window.setTimeout(() => (i === n ? finish() : setResolved(i)), i * STEP_MS));
+    }
   }
+
+  const showChecks = phase !== "idle";
 
   return (
     <div>
-      <p className="tag-label text-muted-foreground">Build step</p>
-      <h2 className="mt-2 text-xl font-bold">{project.title}</h2>
-      <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{project.brief}</p>
+      <h2 className="font-display text-3xl font-bold leading-none">{brief.title}</h2>
+      <p className="measure mt-3 text-text-soft">{brief.brief}</p>
 
-      {/* Criteria / rubric */}
-      <div className="mt-5 grid gap-3">
-        {project.criteria.map((c, i) => {
-          const s = phase === "done" && review ? review.scores[i] : null;
-          const pass = s !== null && s >= PASS_MARK;
+      {/* Acceptance checklist, and the live result when there is one */}
+      <h3 className="mt-7 font-display text-2xl font-semibold leading-none">
+        {showChecks ? "Review" : "What the reviewer checks"}
+      </h3>
+      <ul className="mt-3 divide-y divide-line border-y border-line" aria-live="polite">
+        {brief.criteria.map((c, i) => {
+          const score = phase === "done" && review ? review.scores[i] : null;
+          const state: "waiting" | "checking" | "pass" | "fail" =
+            approved && phase === "idle"
+              ? "pass"
+              : phase === "pending"
+                ? i < resolved
+                  ? review && review.scores[i] >= PASS_MARK
+                    ? "pass"
+                    : "fail"
+                  : i === resolved
+                    ? "checking"
+                    : "waiting"
+                : score !== null
+                  ? score >= PASS_MARK
+                    ? "pass"
+                    : "fail"
+                  : "waiting";
           return (
-            <div key={c}>
-              <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2">
-                  <span
-                    className={`grid size-5 place-items-center rounded-full border ${
-                      pass || approved ? "border-transparent bg-brand text-black" : ""
-                    }`}
-                  >
-                    {(pass || approved) && <Check className="size-3" />}
-                  </span>
-                  {c}
+            <li key={c} className="py-3">
+              <p className="flex items-center gap-3">
+                {state === "pass" ? (
+                  <Check className="size-5 shrink-0 text-volt" aria-hidden="true" />
+                ) : state === "fail" ? (
+                  <Wrench className="size-5 shrink-0 text-kola" aria-hidden="true" />
+                ) : (
+                  <Clock className="size-5 shrink-0 text-node-mute" aria-hidden="true" />
+                )}
+                <span className="flex-1">{c}</span>
+                <span
+                  className={`text-sm font-semibold ${
+                    state === "pass" ? "text-volt" : state === "fail" ? "text-kola" : "text-text-mute"
+                  }`}
+                >
+                  {state === "pass" && "Passed"}
+                  {state === "fail" && "Needs work"}
+                  {state === "checking" && "Checking"}
+                  {state === "waiting" && (showChecks ? "Waiting" : "")}
+                  {score !== null && <span className="data ml-2 font-normal">{score}</span>}
                 </span>
-                {s !== null && <span className="tag-label">{s}%</span>}
-              </div>
-              {s !== null && (
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-secondary">
-                  <motion.div
-                    className={`h-full rounded-full ${pass ? "bg-brand" : "bg-destructive"}`}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${s}%` }}
-                    transition={{ duration: 0.9, delay: i * 0.15, ease: "easeOut" }}
-                  />
-                </div>
+              </p>
+              {state === "fail" && phase === "done" && (
+                <p className="mt-2 pl-8 text-sm text-text-soft">
+                  <span className="font-semibold text-kola">How to fix it: </span>
+                  Re-read the brief for &ldquo;{c}&rdquo;, change your repo so this point is clearly met, and say how in
+                  the README. Then submit again.
+                </p>
               )}
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ul>
 
-      {/* Submit / states */}
-      <div className="mt-6">
+      {/* Submit and result */}
+      <div id="submit" className="mt-8 scroll-mt-20">
         {phase === "pending" && (
-          <div>
-            <p className="tag-label text-muted-foreground">Reviewing your repo</p>
-            <div className="skeleton mt-3 h-10 rounded-full" />
-          </div>
+          <p role="status" className="font-medium">
+            Reviewing your repo. Each check appears above as it finishes.
+          </p>
         )}
 
         {phase === "done" && review && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={spring}
-            className={`rounded-[1.25rem] border p-5 ${review.approved ? "border-primary" : ""}`}
-          >
-            <p className="tag-label text-muted-foreground">
+          <div role="status" className={`border-l-2 pl-4 ${review.approved ? "border-volt" : "border-kola"}`}>
+            <p className={`font-display text-4xl font-bold leading-none ${review.approved ? "text-volt" : "text-kola"}`}>
               {review.approved ? "Approved" : "Needs work"}
             </p>
-            <p className="mt-1 text-3xl font-extrabold">
-              <CountUp to={review.score} />
-              <span className="text-lg text-muted-foreground"> / 100</span>
+            <p className="mt-2 text-lg">
+              Score <span className="data font-semibold">{review.score}</span> out of 100
             </p>
-            <p className="mt-2 text-sm text-muted-foreground">{review.feedback}</p>
+            <p className="mt-1 max-w-[52ch] text-text-soft">{review.feedback}</p>
             {!review.approved && (
-              <button
-                onClick={() => setPhase("idle")}
-                className="tag-label mt-4 rounded-full border px-5 py-2 transition hover:border-primary"
-              >
-                Fix and resubmit
+              <button type="button" onClick={() => setPhase("idle")} className="btn btn-secondary mt-4">
+                Fix and submit again
               </button>
             )}
-          </motion.div>
+          </div>
         )}
 
         {phase === "idle" && approved && (
-          <div className="rounded-[1.25rem] border border-primary p-5">
-            <p className="tag-label text-muted-foreground">Approved</p>
-            <p className="mt-1 text-sm">This skill is verified. Nice work.</p>
-          </div>
+          <p className="border-l-2 border-volt pl-4 text-lg font-medium">This skill is verified. Nice work.</p>
         )}
 
         {phase === "idle" && !approved && (
           <div>
-            <div className="flex flex-col gap-3 md:flex-row">
+            <label htmlFor="repo-url" className="text-sm font-medium">
+              GitHub repo link
+            </label>
+            <div className="mt-2 flex flex-col gap-3 md:flex-row">
               <input
+                id="repo-url"
                 value={url}
-                onChange={(e) => setUrl(e.target.value)}
+                onChange={(e) => {
+                  setUrl(e.target.value);
+                  if (problem) setProblem(null);
+                }}
                 placeholder="https://github.com/you/project"
-                className="w-full rounded-full border bg-background px-5 py-3 text-sm outline-none focus:border-primary"
+                autoComplete="off"
+                spellCheck={false}
+                aria-invalid={!!problem}
+                aria-describedby={problem ? "repo-problem" : undefined}
+                className="field min-w-0 flex-1"
               />
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={submit}
-                className="glow shrink-0 rounded-full bg-brand px-6 py-3 text-sm font-semibold text-black"
-              >
+              <button type="button" onClick={submit} className="btn btn-primary">
                 Submit project
-              </motion.button>
+              </button>
             </div>
-            {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+            {problem && (
+              <p id="repo-problem" role="alert" className="mt-2 text-sm font-medium text-ember">
+                {problem}
+              </p>
+            )}
           </div>
         )}
       </div>
 
-      {/* Other ideas */}
       {suggested.length > 0 && (
-        <div className="mt-8">
-          <p className="tag-label text-muted-foreground">Other project ideas</p>
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
+        <div className="mt-10">
+          <h3 className="font-display text-2xl font-semibold leading-none">Other project ideas</h3>
+          <ul className="mt-3 divide-y divide-line border-y border-line">
             {suggested.map((p) => (
-              <div key={p.id} className="rounded-[1.25rem] border p-4">
-                <p className="text-sm font-semibold">{p.title}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{p.brief}</p>
-              </div>
+              <li key={p.id} className="py-3">
+                <p className="font-medium">{p.title}</p>
+                <p className="mt-0.5 text-sm text-text-soft">{p.brief}</p>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       )}
     </div>
@@ -281,146 +286,139 @@ function BuildPanel({
 }
 
 // ---- Page ----
+type Load = { kind: "loading" } | { kind: "ready"; detail: NodeDetail } | { kind: "error" };
+
 export default function NodePage() {
   const { node } = useParams<{ node: string }>();
-  const router = useRouter();
-  const [detail, setDetail] = useState<NodeDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [load, setLoad] = useState<Load>({ kind: "loading" });
+  const [attempt, setAttempt] = useState(0);
   const [active, setActive] = useState<StepId | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [approved, setApproved] = useState(false);
 
   useEffect(() => {
+    let alive = true;
+    setLoad({ kind: "loading" });
     getNodeDetail(node).then((res) => {
-      if (res.ok) {
-        setDetail(res.data);
-        if (res.data.node.nextStep !== "done") setActive(res.data.node.nextStep);
-      } else {
-        setError(res.message);
-      }
+      if (!alive) return;
+      if (!res.ok) return setLoad({ kind: "error" });
+      setLoad({ kind: "ready", detail: res.data });
+      const wantsSubmit = typeof window !== "undefined" && window.location.hash === "#submit";
+      const next = res.data.node.nextStep;
+      setActive(wantsSubmit ? "build" : next !== "done" ? next : null);
     });
-  }, [node]);
+    return () => {
+      alive = false;
+    };
+  }, [node, attempt]);
 
-  function onSelect(stop: RoadmapNode) {
-    if (!detail) return;
-    const step = detail.steps.find((s) => s.id === stop.id);
-    if (!step) return;
-    if (step.state === "coming_soon") {
-      setActive(null);
-      setNotice("Test is coming soon. For now, an approved project is what verifies a skill.");
-    } else if (step.state === "locked") {
-      setActive(null);
-      setNotice(step.lockedReason ?? "Finish the earlier step first.");
-    } else {
-      setNotice(null);
-      setActive(active === step.id ? null : step.id);
+  // Jump to the submit form when the link asked for it.
+  useEffect(() => {
+    if (load.kind === "ready" && active === "build" && window.location.hash === "#submit") {
+      document.getElementById("submit")?.scrollIntoView({ block: "center" });
     }
+  }, [load.kind, active]);
+
+  if (load.kind === "loading") {
+    return (
+      <main id="main" className="mx-auto max-w-4xl px-4 py-8 md:px-10" aria-busy="true">
+        <p className="sr-only">Loading this skill</p>
+        <div className="skeleton h-10 w-40 rounded-full" />
+        <div className="skeleton mt-6 h-14 w-2/3 rounded-full" />
+        <div className="skeleton mt-6 h-72 rounded-[1.25rem]" />
+      </main>
+    );
   }
 
-  const labels = detail
-    ? Object.fromEntries(
-        detail.steps.filter((s) => s.state === "coming_soon").map((s) => [s.id, "Coming soon"])
-      )
-    : undefined;
+  if (load.kind === "error") {
+    return (
+      <main id="main" className="mx-auto max-w-2xl px-5 py-16">
+        <h1 className="display-md">This skill did not load</h1>
+        <p className="measure mt-4 text-lg text-text-soft">
+          The link may be wrong, or your connection dropped. Try again, or go back to your roadmap and pick it from there.
+        </p>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <button type="button" className="btn btn-primary" onClick={() => setAttempt((a) => a + 1)}>
+            Try again
+          </button>
+          <Link href="/roadmap" className="btn btn-secondary">
+            Back to roadmap
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
-  const assigned = detail?.projects.find((p) => p.kind === "assigned");
-  const suggested = detail?.projects.filter((p) => p.kind === "suggested") ?? [];
+  const { detail } = load;
+  const assigned = detail.projects.find((p) => p.kind === "assigned");
+  const suggested = detail.projects.filter((p) => p.kind === "suggested");
+  const statusLabel = detail.node.locked ? "Locked" : approved ? "Verified" : statusText[detail.node.status];
+
+  const tabs: { id: StepId; label: string; disabled: boolean; note: string | null }[] = detail.steps.map((s) => ({
+    id: s.id,
+    label: s.id === "learn" ? "Learn" : s.id === "build" ? "Build" : "Test",
+    disabled: s.state === "locked" || s.state === "coming_soon",
+    note: s.state === "coming_soon" ? "Coming soon" : s.state === "locked" ? s.lockedReason : null,
+  }));
+  const activeNote = tabs.find((t) => t.id === active)?.note;
 
   return (
-    <main className="relative min-h-dvh px-4 py-6 md:px-10">
-      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <motion.div
-          className="absolute -left-40 top-20 size-[520px] rounded-full bg-[#BEF264]/10 blur-3xl"
-          animate={{ x: [0, 80, 0], y: [0, 50, 0] }}
-          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute -right-32 bottom-0 size-[560px] rounded-full bg-[#047857]/20 blur-3xl"
-          animate={{ x: [0, -70, 0], y: [0, -60, 0] }}
-          transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
-        />
+    <main id="main" className="mx-auto max-w-4xl px-4 pb-20 pt-6 md:px-10">
+      <Link href="/roadmap" className="btn btn-ghost -ml-4">
+        Back to roadmap
+      </Link>
+
+      <header className="mt-4">
+        <h1 className="display-md">{detail.node.title}</h1>
+        <p className="measure mt-3 text-lg text-text-soft">{detail.node.blurb}</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className={`badge ${approved || detail.node.status === "verified" ? "badge-verified" : detail.node.locked ? "badge-locked" : "badge-todo"}`}>
+            {detail.node.locked && <Lock aria-hidden="true" />}
+            {statusLabel}
+          </span>
+          <span className="badge badge-todo">
+            <span className="data">{detail.node.hours}h</span>
+          </span>
+          {detail.node.isStretch && <span className="badge badge-todo">Stretch</span>}
+        </div>
+      </header>
+
+      {/* Steps */}
+      <div role="group" aria-label="Steps" className="mt-8 flex flex-wrap gap-2">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            className="chip"
+            aria-pressed={active === t.id}
+            aria-disabled={t.disabled || undefined}
+            onClick={() => setActive(t.disabled ? null : active === t.id ? null : t.id)}
+          >
+            {t.disabled && <Lock className="size-3.5" aria-hidden="true" />}
+            {t.label}
+            {t.note && <span className="text-text-mute"> ({t.note.toLowerCase()})</span>}
+          </button>
+        ))}
       </div>
 
-      <button
-        onClick={() => router.push("/roadmap")}
-        className="tag-label mb-6 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-muted-foreground transition hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" /> Roadmap
-      </button>
+      <section className="mt-8" aria-live="polite">
+        {active === null && (
+          <p className="text-text-soft">
+            {activeNote ?? "Pick a step above. Learn comes first, then Build. A project you submit and pass is what verifies this skill."}
+          </p>
+        )}
+        {active === "learn" && <LearnPanel resources={detail.resources} hasRepo={detail.repoId !== null} />}
+        {active === "build" && (
+          <BuildPanel
+            key={detail.node.id}
+            project={assigned}
+            suggested={suggested}
+            approved={approved || detail.node.status === "verified"}
+            onApproved={() => setApproved(true)}
+          />
+        )}
+      </section>
 
-      {error && <p className="text-destructive">{error}</p>}
-      {!detail && !error && <div className="skeleton h-[420px] rounded-[1.75rem]" />}
-
-      {detail && (
-        <>
-          <motion.header variants={fadeUp} initial="hidden" animate="show" className="mb-4">
-            <p className="tag-label text-muted-foreground">Skill / {detail.node.phase}</p>
-            <h1 className="text-3xl font-extrabold md:text-5xl">{detail.node.title}</h1>
-            <p className="mt-3 max-w-2xl text-muted-foreground">{detail.node.blurb}</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <span className="tag-label rounded-full border px-3 py-1">
-                {detail.node.locked ? "Locked" : approved ? "Verified" : statusText[detail.node.status]}
-              </span>
-              <span className="tag-label rounded-full border px-3 py-1">{detail.node.hours}h</span>
-              {detail.node.isStretch && (
-                <span className="tag-label rounded-full border px-3 py-1">Stretch</span>
-              )}
-            </div>
-          </motion.header>
-
-          {/* On wider screens the 3-stop road fits without a scrollbar */}
-          <div className="md:[&>div]:overflow-x-hidden md:[&>div>div]:min-w-0!">
-            <RoadmapRoad
-              nodes={toStops(detail, approved)}
-              onSelect={onSelect}
-              highlightId={active}
-              labels={labels}
-            />
-          </div>
-
-          <AnimatePresence>
-            {notice && (
-              <motion.div
-                key={notice}
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="mb-4 rounded-full border bg-card px-5 py-3 text-sm"
-              >
-                {notice}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <AnimatePresence mode="wait">
-            {active && (
-              <motion.section
-                key={active}
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={spring}
-                className="overflow-hidden"
-              >
-                <div className="rounded-[1.75rem] border bg-card p-6 md:p-8">
-                  {active === "learn" && (
-                    <LearnPanel resources={detail.resources} hasRepo={detail.repoId !== null} />
-                  )}
-                  {active === "build" && (
-                    <BuildPanel
-                      project={assigned}
-                      suggested={suggested}
-                      approved={approved}
-                      onApproved={() => setApproved(true)}
-                    />
-                  )}
-                </div>
-              </motion.section>
-            )}
-          </AnimatePresence>
-          <CertificatesPanel suggested={detail.suggestedCertificates} />
-        </>
-      )}
+      <CertificatesPanel suggested={detail.suggestedCertificates} />
     </main>
   );
 }
