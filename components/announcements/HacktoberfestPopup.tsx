@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { opportunities, getStatus } from "@/content/opportunities";
+import { useModal } from "@/lib/use-modal";
 
 const OPPORTUNITY_ID = "aws-hacktoberfest";
 const STORAGE_KEY = "ladda:hacktoberfest-popup-dismissed";
@@ -39,28 +40,8 @@ export default function HacktoberfestPopup() {
     router.push(`/opportunities/${OPPORTUNITY_ID}`);
   }
 
-  // Focus moves in, Tab stays inside, Escape closes.
-  useEffect(() => {
-    if (!open) return;
-    lookRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") return dismiss();
-      if (e.key !== "Tab") return;
-      const items = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>("button, a[href]") ?? []);
-      if (!items.length) return;
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  // Focus trap, Escape, scroll lock, and focus back to where the person was.
+  useModal(open, dialogRef, { onClose: dismiss });
 
   if (!o || !open) return null;
 

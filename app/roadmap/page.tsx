@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { getRoadmap } from "@/lib/api/client";
 import type { Roadmap } from "@/lib/contract";
 import { isTrackComplete } from "@/lib/roadmap/progress";
+import { useMediaQuery, useModal } from "@/lib/use-modal";
 import ContourBackdrop from "@/components/landing/ContourBackdrop";
 import HoursStrip from "@/components/roadmap/HoursStrip";
 import NodePanel from "@/components/roadmap/NodePanel";
@@ -41,13 +42,11 @@ export default function RoadmapPage() {
     setSheetOpen(true);
   }, []);
 
-  // Escape closes the bottom sheet on phones.
-  useEffect(() => {
-    if (!sheetOpen) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSheetOpen(false);
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [sheetOpen]);
+  // On phones the panel is a modal sheet: focus trap, Escape, scroll lock, focus back to the stop.
+  const isSheet = useMediaQuery("(max-width: 1023px)");
+  const sheetRef = useRef<HTMLElement>(null);
+  const sheetModal = isSheet && sheetOpen;
+  useModal(sheetModal, sheetRef, { onClose: () => setSheetOpen(false) });
 
   if (load.kind === "error") {
     return (
@@ -128,9 +127,16 @@ export default function RoadmapPage() {
         </section>
 
         {/* Detail panel: a column on desktop, a bottom sheet on phones */}
+        {sheetModal && (
+          <div className="fixed inset-0 z-20 bg-black/60" aria-hidden="true" onClick={() => setSheetOpen(false)} />
+        )}
         <aside
+          ref={sheetRef}
           aria-label="Selected stop"
-          className={`border-line bg-understory lg:static lg:block lg:max-h-none lg:overflow-visible lg:border-l lg:p-8 ${
+          role={sheetModal ? "dialog" : undefined}
+          aria-modal={sheetModal ? true : undefined}
+          tabIndex={sheetModal ? -1 : undefined}
+          className={`border-line bg-understory outline-none lg:static lg:block lg:max-h-none lg:overflow-visible lg:border-l lg:p-8 ${
             sheetOpen
               ? "fixed inset-x-0 bottom-0 z-30 max-h-[78dvh] overflow-y-auto rounded-t-[1.25rem] border-t border-line-strong p-5 shadow-[0_-24px_60px_-24px_rgb(0_0_0/0.9)]"
               : "hidden"

@@ -7,6 +7,7 @@ import { envelope, VerifyResponseSchema, type VerifyResponse } from "@/lib/contr
 import { base64ToBytes, payloadBytes } from "@/lib/credential/encoding";
 import { NODE_EXPRESS } from "@/lib/demo";
 import { usePlay } from "@/lib/motion";
+import { useScrollLock } from "@/lib/use-modal";
 import NarratorCard from "./NarratorCard";
 import Spotlight from "./Spotlight";
 import { CredentialScene, CvScene, EmployerScene, ProjectScene, TrailScene, type ReviewProgress, type Verdict } from "./scenes";
@@ -21,6 +22,8 @@ export default function TourApp() {
   const play = usePlay();
   const tour = useTour(SEGMENTS, (i) => STEPS[i].seconds);
   const step = STEPS[tour.index];
+  // The tour is modal, so the page behind stays put. The tour still scrolls it to each target.
+  useScrollLock(tour.open);
 
   const rect = useTargetRect(step.target, tour.open, step.id);
   const [card, setCard] = useState<DOMRect | null>(null);

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
+import { useModal } from "@/lib/use-modal";
 
 const SHOW_ON = ["/dashboard", "/roadmap", "/opportunities"];
 
@@ -39,37 +40,10 @@ export default function AppShell() {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLElement>(null);
 
-  // Menu drawer: move focus in, keep Tab inside, give focus back on close.
-  useEffect(() => {
-    if (!menuOpen) return;
-    const trigger = triggerRef.current;
-    const drawer = drawerRef.current;
-    const selector = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
-    const focusables = () => Array.from(drawer?.querySelectorAll<HTMLElement>(selector) ?? []);
-    focusables()[0]?.focus();
+  const profileBtnRef = useRef<HTMLButtonElement>(null);
 
-    function onKey(e: KeyboardEvent) {
-      if (e.key !== "Tab") return;
-      const items = focusables();
-      if (!items.length) return;
-      const first = items[0];
-      const last = items[items.length - 1];
-      const active = document.activeElement;
-      const outside = !drawer?.contains(active);
-      if (e.shiftKey && (active === first || outside)) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && (active === last || outside)) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      trigger?.focus();
-    };
-  }, [menuOpen]);
+  // Menu drawer: focus trap, Escape, scroll lock, and focus back on the menu button.
+  useModal(menuOpen, drawerRef, { onClose: () => setMenuOpen(false), returnTo: triggerRef });
 
   // Close everything when the page changes.
   useEffect(() => {
@@ -93,12 +67,12 @@ export default function AppShell() {
     };
   }, []);
 
-  // Escape closes menus; clicking outside closes the profile menu.
+  // Escape closes the profile menu and returns focus to its button. Clicking outside closes it too.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        setMenuOpen(false);
+      if (e.key === "Escape" && profileOpen) {
         setProfileOpen(false);
+        profileBtnRef.current?.focus();
       }
     }
     function onDown(e: MouseEvent) {
@@ -112,7 +86,7 @@ export default function AppShell() {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("mousedown", onDown);
     };
-  }, []);
+  }, [profileOpen]);
 
   async function signOut() {
     try {
@@ -179,8 +153,10 @@ export default function AppShell() {
 
           <div ref={profileRef} className="relative">
             <button
+              ref={profileBtnRef}
               onClick={() => setProfileOpen((v) => !v)}
               aria-label="Profile menu"
+              aria-haspopup="menu"
               aria-expanded={profileOpen}
               className="flex size-11 items-center justify-center rounded-full border border-line-strong bg-understory font-display text-lg font-bold text-volt"
             >
