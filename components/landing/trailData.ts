@@ -1,5 +1,6 @@
 // The landing trail: one route in a 1440x900 space, with eight knots.
 import type { NodeState } from "@/lib/node-shapes";
+import { DEMO_ROADMAP, SUMMIT_NODE } from "@/lib/demo/roadmap";
 
 export const VIEW = { w: 1440, h: 900 } as const;
 
@@ -48,6 +49,7 @@ export const KNOT_FRACTIONS: number[] = (() => {
 })();
 
 export type Knot = {
+  id: string;
   x: number;
   y: number;
   state: NodeState;
@@ -56,19 +58,25 @@ export type Knot = {
   side: "left" | "right" | "above" | "below";
 };
 
-// Label sides are picked so no label sits on the route or the headline column.
-export const KNOTS: Knot[] = [
-  { x: 540, y: 830, state: "verified", label: "Git and GitHub", side: "left" },
-  { x: 760, y: 770, state: "verified", label: "HTTP and REST", side: "below" },
-  { x: 960, y: 700, state: "in_progress", label: "Node and Express", percent: 62, side: "above" },
-  { x: 1130, y: 610, state: "known", label: "SQL and Postgres", side: "right" },
-  { x: 960, y: 500, state: "todo", label: "Auth and security", side: "left" },
-  { x: 1120, y: 380, state: "locked", label: "Deploying", side: "right" },
-  { x: 1010, y: 230, state: "locked", label: "Capstone API", side: "left" },
+// Where each stop sits and which side its name goes, so no name lands on the
+// route or the headline column. States and names come from lib/demo/roadmap.
+const PLACES: { x: number; y: number; side: Knot["side"] }[] = [
+  { x: 540, y: 830, side: "left" },
+  { x: 760, y: 770, side: "below" },
+  { x: 960, y: 700, side: "above" },
+  { x: 1130, y: 610, side: "right" },
+  { x: 960, y: 500, side: "left" },
+  { x: 1120, y: 380, side: "right" },
+  { x: 1010, y: 230, side: "left" },
 ];
 
+export const KNOTS: Knot[] = PLACES.map((p, i) => {
+  const n = DEMO_ROADMAP[i];
+  return { id: n.id, x: p.x, y: p.y, side: p.side, state: n.state, label: n.label, percent: n.percent };
+});
+
 // The summit (K7): a flag and a seal.
-export const SUMMIT = { x: 1170, y: 130, label: "Proof" } as const;
+export const SUMMIT = { id: SUMMIT_NODE.id, x: 1170, y: 130, label: SUMMIT_NODE.label } as const;
 
 // The finished part of the route ends at the in-progress knot.
 export const DONE_FRACTION = KNOT_FRACTIONS[2];

@@ -24,6 +24,8 @@ export const CredentialPayloadSchema = z.object({
   roleTitle: z.string(),
   skills: z.array(CredentialSkillSchema), // Verified skills only
   issuedAt: z.string(),
+  // Signed with the rest, so editing it breaks the signature (the tamper test).
+  verifiedHours: z.number().optional(),
 });
 export type CredentialPayload = z.infer<typeof CredentialPayloadSchema>;
 

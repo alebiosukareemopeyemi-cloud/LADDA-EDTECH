@@ -21,19 +21,21 @@ const at = (x: number, y: number, delay: number) =>
   ({ "--ox": `${x}px`, "--oy": `${y}px`, "--delay": `${delay}s` }) as CSSProperties;
 
 // The winding trail behind the hero. Decorative: the headline and links carry the meaning.
-export default function TrailMap() {
+export default function TrailMap({ dimOnMobile = true }: { dimOnMobile?: boolean }) {
   return (
     <svg
       aria-hidden="true"
       focusable="false"
       viewBox={`0 0 ${VIEW.w} ${VIEW.h}`}
       preserveAspectRatio="xMidYMid slice"
-      className="pointer-events-none absolute inset-0 size-full opacity-40 md:opacity-100"
+      className={`pointer-events-none absolute inset-0 size-full ${dimOnMobile ? "opacity-40 md:opacity-100" : ""}`}
     >
       <Trail d={ROUTE} progress={DONE_FRACTION} duration={DRAW_SECONDS} />
 
       {KNOTS.map((k, i) => (
         <g key={k.label} className="marker-pop" style={at(k.x, k.y, POP_DELAYS[i])}>
+          {/* Invisible box the tour spotlights. */}
+          <rect data-tour={`node-${k.id}`} x={k.x - 60} y={k.y - 62} width="120" height="96" fill="none" />
           <NodeMarker
             x={k.x - 100}
             y={k.y - 100}
