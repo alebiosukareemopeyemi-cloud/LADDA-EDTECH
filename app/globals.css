@@ -510,6 +510,39 @@
   animation: beacon 2.4s ease-out infinite;
 }
 
+/* Landing moments. --ox, --oy and --delay are set inline per element.
+   Under reduced motion all animation is off and these show in their final state. */
+@keyframes marker-pop {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes seal-stamp {
+  from {
+    transform: scale(1.7) rotate(-16deg);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.marker-pop {
+  transform-box: view-box;
+  transform-origin: var(--ox) var(--oy);
+  animation: marker-pop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) var(--delay, 0s) both;
+}
+.seal-stamp {
+  transform-box: view-box;
+  transform-origin: var(--ox) var(--oy);
+  animation: seal-stamp 0.55s cubic-bezier(0.2, 1.5, 0.4, 1) var(--delay, 0s) both;
+}
+
 /* Loading placeholder: a still block. No shimmer. */
 @utility skeleton {
   background: var(--color-line);

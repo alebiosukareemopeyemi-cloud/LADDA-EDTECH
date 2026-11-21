@@ -12,23 +12,53 @@ type Props = {
   /** Rendered width in px. The artwork is 200 wide. */
   size?: number;
   className?: string;
+  /** Where the name sits. Defaults to below the marker. */
+  labelPosition?: "below" | "above" | "left" | "right";
+  /** Extra classes for the name, for example to hide it on small screens. */
+  labelClassName?: string;
+  /** Offset when nested inside another SVG. */
+  x?: number;
+  y?: number;
 };
 
 const C22 = 2 * Math.PI * 22; // circumference of the in-progress track
 
 // Everything is drawn around (0,0). The label sits under the marker.
 // Shape carries the meaning; colour only backs it up.
-export default function NodeMarker({ state, percent = 0, label, selected = false, size = 160, className }: Props) {
+export default function NodeMarker({
+  state,
+  percent = 0,
+  label,
+  selected = false,
+  size = 160,
+  className,
+  labelPosition = "below",
+  labelClassName,
+  x,
+  y,
+}: Props) {
   const gid = useId().replace(/:/g, "");
   const pct = Math.max(0, Math.min(100, percent));
   const reach = state === "in_progress" ? 22 : 17;
   const labelY = selected ? 112 : reach + 34;
+  const flagRoom = state === "verified" ? 36 : 0; // the flag sits above the circle
+
+  const place =
+    labelPosition === "left"
+      ? { x: -(reach + 14), y: 7, anchor: "end" as const }
+      : labelPosition === "right"
+        ? { x: reach + 14, y: 7, anchor: "start" as const }
+        : labelPosition === "above"
+          ? { x: 0, y: -(reach + 14 + flagRoom), anchor: "middle" as const }
+          : { x: 0, y: labelY, anchor: "middle" as const };
 
   return (
     <svg
       role="img"
       aria-label={`${label}, ${NODE_SHAPES[state].text}${state === "in_progress" ? `, ${Math.round(pct)} percent` : ""}`}
       viewBox="-100 -100 200 240"
+      x={x}
+      y={y}
       width={size}
       height={(size * 240) / 200}
       className={className}
@@ -102,8 +132,10 @@ export default function NodeMarker({ state, percent = 0, label, selected = false
       )}
 
       <text
-        y={labelY}
-        textAnchor="middle"
+        x={place.x}
+        y={place.y}
+        textAnchor={place.anchor}
+        className={labelClassName}
         fill={state === "locked" ? "#6E8A7A" : "#EDF2E4"}
         style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 22 }}
       >

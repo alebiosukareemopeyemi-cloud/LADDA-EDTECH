@@ -57,14 +57,10 @@ export const unlockStep: Variants = {
 
 /* ---------- Moment 3: the seal stamps ---------- */
 
+export const sealTransition: Transition = { duration: 0.55, ease: [0.2, 1.5, 0.4, 1] };
 export const sealStamp: Variants = {
   hidden: { scale: 1.7, rotate: -16, opacity: 0 },
-  show: {
-    scale: 1,
-    rotate: 0,
-    opacity: 1,
-    transition: { duration: 0.55, ease: [0.2, 1.5, 0.4, 1] },
-  },
+  show: { scale: 1, rotate: 0, opacity: 1, transition: sealTransition },
 };
 
 /* ---------- Retired ----------
