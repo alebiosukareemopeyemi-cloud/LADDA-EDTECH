@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { getRoadmap } from "@/lib/api/client";
 import type { Roadmap } from "@/lib/contract";
+import { isTrackComplete } from "@/lib/roadmap/progress";
 import ContourBackdrop from "@/components/landing/ContourBackdrop";
 import HoursStrip from "@/components/roadmap/HoursStrip";
 import NodePanel from "@/components/roadmap/NodePanel";
@@ -115,6 +116,11 @@ export default function RoadmapPage() {
               <span className="data">{roadmap.progress.total}</span> skills,{" "}
               <span className="data">{roadmap.weeksLeft}</span> weeks left
             </p>
+            {isTrackComplete(roadmap) && (
+              <Link href="/roadmap/complete" className="btn btn-primary mt-4">
+                Get your credential
+              </Link>
+            )}
           </header>
           <div className="relative z-10 min-h-0 flex-1 px-2 pb-4 md:px-6">
             <RoadmapTrail nodes={roadmap.nodes} selectedId={selected.id} onSelect={(n) => select(n.id)} className="size-full min-h-[360px]" />

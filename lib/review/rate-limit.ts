@@ -2,7 +2,10 @@
 // and is per server instance, which is fine for a demo. Move it to the database before
 // relying on it at scale.
 
-export const REVIEW_LIMIT = 5;
+// Five an hour by default. REVIEW_LIMIT_PER_HOUR raises it, for example for a demo that
+// has to verify a whole track in one sitting.
+const DEFAULT_LIMIT = 5;
+export const REVIEW_LIMIT = Number(process.env.REVIEW_LIMIT_PER_HOUR) > 0 ? Number(process.env.REVIEW_LIMIT_PER_HOUR) : DEFAULT_LIMIT;
 export const REVIEW_WINDOW_MS = 60 * 60 * 1000;
 
 const hits = new Map<string, number[]>();

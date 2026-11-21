@@ -103,3 +103,26 @@ alter table public.reviews enable row level security;
 -- No policies on purpose: only the service role can read or write this table.
 
 grant all privileges on public.reviews to service_role;
+
+-- ============================================================ signed credentials
+-- One row per issued credential. The signature is ed25519 over the canonical payload.
+-- RLS is on and there is NO policy: the table cannot be read with the anon or the
+-- authenticated key. Reads go through /api/verify/[id] using the service role, which
+-- returns one credential by its id and never lists the table.
+
+create table if not exists public.credentials (
+  id          text primary key,
+  user_id     uuid not null references auth.users (id) on delete cascade,
+  payload     jsonb not null,
+  signature   text not null,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists credentials_user_id_idx on public.credentials (user_id);
+
+alter table public.credentials enable row level security;
+-- Remove any policy added by hand, so public SELECT stays off.
+drop policy if exists "credentials: public read" on public.credentials;
+
+revoke all on public.credentials from anon, authenticated;
+grant all privileges on public.credentials to service_role;

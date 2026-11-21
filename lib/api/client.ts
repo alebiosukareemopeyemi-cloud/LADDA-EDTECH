@@ -39,7 +39,7 @@ import {
 import { mockPaths } from "@/lib/mocks/intake";
 import { buildPlannedRoadmap } from "@/lib/intake/planner";
 import { applyVerified } from "@/lib/roadmap/progress";
-import { localVerifiedIds, markLocalVerified } from "@/lib/review/local";
+import { localReviews, localVerifiedIds, markLocalVerified, saveLocalCredentialId } from "@/lib/review/local";
 
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === "1";
 
@@ -115,6 +115,19 @@ export async function getNodeDetail(nodeId: string): Promise<ApiResult<NodeDetai
 // ---- Live repo review (real in both modes: only where the result is saved differs) ----
 export async function reviewRepo(nodeId: string, repoUrl: string): Promise<ApiResult<ReviewResponse>> {
   return call("/api/review", ReviewResponseSchema, post({ nodeId, repoUrl }));
+}
+
+// ---- Credential on completion ----
+const IssuedSchema = z.object({ credentialId: z.string(), existing: z.boolean() });
+
+// Real mode: the server already has your reviews. Mock mode: the browser lists what it verified.
+export async function issueMyCredential(): Promise<ApiResult<{ credentialId: string; existing: boolean }>> {
+  const reviews = USE_MOCKS
+    ? Object.entries(localReviews()).map(([skillId, r]) => ({ skillId, repoUrl: r.repoUrl, commitHash: r.commitHash }))
+    : undefined;
+  const res = await call("/api/credential/issue", IssuedSchema, post({ reviews }));
+  if (res.ok && USE_MOCKS) saveLocalCredentialId(res.data.credentialId);
+  return res;
 }
 
 // Keep an approved review so a demo survives a refresh. Mock mode only: the server saves it otherwise.
