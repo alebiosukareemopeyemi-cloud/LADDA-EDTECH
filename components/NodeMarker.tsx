@@ -43,19 +43,22 @@ export default function NodeMarker({
   const labelY = selected ? 112 : reach + 34;
   const flagRoom = state === "verified" ? 36 : 0; // the flag sits above the circle
 
+  // A name can break onto lines with "\n".
+  const lines = label.split("\n");
+  const LINE = 24;
   const place =
     labelPosition === "left"
       ? { x: -(reach + 14), y: 7, anchor: "end" as const }
       : labelPosition === "right"
         ? { x: reach + 14, y: 7, anchor: "start" as const }
         : labelPosition === "above"
-          ? { x: 0, y: -(reach + 14 + flagRoom), anchor: "middle" as const }
+          ? { x: 0, y: -(reach + 14 + flagRoom) - (lines.length - 1) * LINE, anchor: "middle" as const }
           : { x: 0, y: labelY, anchor: "middle" as const };
 
   return (
     <svg
       role="img"
-      aria-label={`${label}, ${NODE_SHAPES[state].text}${state === "in_progress" ? `, ${Math.round(pct)} percent` : ""}`}
+      aria-label={`${label.replace(/\n/g, " ")}, ${NODE_SHAPES[state].text}${state === "in_progress" ? `, ${Math.round(pct)} percent` : ""}`}
       viewBox="-100 -100 200 240"
       x={x}
       y={y}
@@ -139,7 +142,11 @@ export default function NodeMarker({
         fill={state === "locked" ? "#6E8A7A" : "#EDF2E4"}
         style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 22 }}
       >
-        {label}
+        {lines.map((line, i) => (
+          <tspan key={i} x={place.x} dy={i === 0 ? 0 : LINE}>
+            {line}
+          </tspan>
+        ))}
       </text>
     </svg>
   );

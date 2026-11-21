@@ -373,6 +373,38 @@
     border-color: var(--color-ember);
   }
 
+  /* One choice in a list: a native radio with a visible mark. */
+  .choice {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 0;
+    cursor: pointer;
+  }
+  .choice[aria-disabled="true"] {
+    cursor: default;
+    opacity: 0.75;
+  }
+  .choice-mark {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 2px solid var(--color-node-mute);
+    border-radius: 9999px;
+    color: transparent;
+  }
+  .choice input:checked + .choice-mark {
+    border-color: var(--color-volt);
+    background: var(--color-volt);
+    color: #04110a;
+  }
+  .choice input:focus-visible + .choice-mark {
+    outline: 2px solid var(--color-volt);
+    outline-offset: 3px;
+  }
+
   /* Chips */
   .chip {
     display: inline-flex;
@@ -541,6 +573,15 @@
   transform-box: view-box;
   transform-origin: var(--ox) var(--oy);
   animation: seal-stamp 0.55s cubic-bezier(0.2, 1.5, 0.4, 1) var(--delay, 0s) both;
+}
+
+/* Clickable stops on the roadmap trail. */
+.trail-hit {
+  cursor: pointer;
+}
+.trail-hit:focus-visible {
+  outline: 2px solid var(--color-volt);
+  outline-offset: 3px;
 }
 
 /* Judge tour: the narrator card is one of the three glass surfaces. */

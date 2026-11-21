@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import catalog from "@/content/catalog/backend.json";
-import { IntakeShell, type Direction } from "@/components/intake/IntakeShell";
+import { IntakeShell } from "@/components/intake/IntakeShell";
 import { StageStep } from "@/components/intake/StageStep";
 import { TargetStep, targetCopy } from "@/components/intake/TargetStep";
 import { KnownStep, type KnownSkill } from "@/components/intake/KnownStep";
@@ -23,7 +23,6 @@ const KNOWABLE: KnownSkill[] = knowableSkills().map((s) => ({
 export default function IntakePage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
-  const [dir, setDir] = useState<Direction>(1);
   const [stage, setStage] = useState<Stage | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [interests, setInterests] = useState("");
@@ -33,15 +32,16 @@ export default function IntakePage() {
   const [horizon, setHorizon] = useState<number | null>(12);
   const [built, setBuilt] = useState<Roadmap | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
   const finished = useRef(false);
 
   function go(n: number) {
-    setDir(n > step ? 1 : -1);
+    setProblem(null);
     setStep(n);
   }
 
   function pickStage(s: Stage) {
+    setProblem(null);
     if (s !== stage) {
       setStage(s);
       setRole(null);
@@ -65,11 +65,11 @@ export default function IntakePage() {
   async function buildPath() {
     if (!stage || busy) return;
     setBusy(true);
-    setError(null);
+    setProblem(null);
     const res = await buildRoadmap(request(stage));
     setBusy(false);
     if (!res.ok) {
-      setError(res.message);
+      setProblem(`We could not build your path: ${res.message} Check your connection and select Build my path again.`);
       return;
     }
     setBuilt(res.data.roadmap);
@@ -88,13 +88,14 @@ export default function IntakePage() {
     return (
       <IntakeShell
         step={0}
-        stepKey="stage"
-        direction={dir}
         title="Where are you right now?"
-        subtitle="One tap. We tailor everything to this."
+        subtitle="Pick one. We tailor everything to it."
+        problem={problem}
         primaryLabel="Continue"
-        primaryDisabled={!stage}
-        onPrimary={() => go(1)}
+        onPrimary={() => {
+          if (!stage) setProblem("Pick one option to continue: aspirant, studying or graduating.");
+          else go(1);
+        }}
       >
         <StageStep value={stage} onChange={pickStage} />
       </IntakeShell>
@@ -106,19 +107,28 @@ export default function IntakePage() {
     return (
       <IntakeShell
         step={1}
-        stepKey={`target-${stage}`}
-        direction={dir}
         title={copy.title}
         subtitle={copy.subtitle}
+        problem={problem}
         onBack={() => go(0)}
         primaryLabel="Continue"
-        primaryDisabled={!role}
-        onPrimary={() => go(2)}
+        onPrimary={() => {
+          if (!role) {
+            setProblem(
+              stage === "aspirant"
+                ? "Pick a path from your results to continue. Write what you enjoy and select Find my paths first."
+                : "Pick a path to continue. Only Backend Engineer is open right now."
+            );
+          } else go(2);
+        }}
       >
         <TargetStep
           stage={stage}
           value={role}
-          onChange={setRole}
+          onChange={(id) => {
+            setProblem(null);
+            setRole(id);
+          }}
           availableRoleIds={[catalog.roleId]}
           interests={interests}
           onInterests={setInterests}
@@ -137,22 +147,15 @@ export default function IntakePage() {
     return (
       <IntakeShell
         step={2}
-        stepKey="known"
-        direction={dir}
         title="Anything you already know?"
-        subtitle="Tick what you are comfortable with. We skip the learning and you go straight to proving it."
+        subtitle="Select what you are comfortable with. We skip the learning and you go straight to proving it."
         onBack={() => go(1)}
         primaryLabel="Continue"
         onPrimary={() => go(3)}
         secondaryLabel={known.length === 0 ? "Skip for now" : undefined}
         onSecondary={() => go(3)}
       >
-        <KnownStep
-          skills={KNOWABLE}
-          value={known}
-          onChange={setKnown}
-          hoursSaved={hoursSavedBy(known)}
-        />
+        <KnownStep skills={KNOWABLE} value={known} onChange={setKnown} hoursSaved={hoursSavedBy(known)} />
       </IntakeShell>
     );
   }
@@ -166,12 +169,11 @@ export default function IntakePage() {
   return (
     <IntakeShell
       step={3}
-      stepKey="time"
-      direction={dir}
       title="How much time can you give?"
-      subtitle={error ?? "We plan your path around it."}
+      subtitle="We plan your path around it."
+      problem={problem}
       onBack={() => go(2)}
-      primaryLabel={busy ? "Working..." : "Build my path"}
+      primaryLabel={busy ? "Building your path" : "Build my path"}
       primaryDisabled={busy}
       onPrimary={buildPath}
     >

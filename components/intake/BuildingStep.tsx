@@ -1,14 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MotionConfig, motion } from "framer-motion";
-import { Check, Loader2 } from "lucide-react";
+import { Check } from "lucide-react";
 import type { RoadmapNode } from "@/lib/contract";
-import { RoadmapRoad } from "@/components/roadmap/RoadmapRoad";
-import { fadeUp, spring } from "@/lib/motion";
-
-// The road is drawn on a 1100px canvas; we shrink it to fit the screen.
-const ROAD_W = 1100;
+import RoadmapTrail from "@/components/roadmap/RoadmapTrail";
+import ContourBackdrop from "@/components/landing/ContourBackdrop";
 
 type Props = {
   nodes: RoadmapNode[];
@@ -18,10 +14,6 @@ type Props = {
 };
 
 export function BuildingStep({ nodes, weeks, onDone, durationMs = 6500 }: Props) {
-  const outerRef = useRef<HTMLDivElement>(null);
-  const innerRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
-  const [innerH, setInnerH] = useState(0);
   const [shown, setShown] = useState(0);
   const [done, setDone] = useState(0);
 
@@ -37,23 +29,7 @@ export function BuildingStep({ nodes, weeks, onDone, durationMs = 6500 }: Props)
     onDoneRef.current();
   }, []);
 
-  // Fit the road to the card width and keep the card height in step.
-  useEffect(() => {
-    const outer = outerRef.current;
-    const inner = innerRef.current;
-    if (!outer || !inner) return;
-    const measure = () => {
-      setScale(Math.min(1, outer.clientWidth / ROAD_W));
-      setInnerH(inner.offsetHeight);
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(outer);
-    ro.observe(inner);
-    return () => ro.disconnect();
-  }, []);
-
-  // Ticking lines, then move on by itself.
+  // Three lines tick off, then move on by itself.
   useEffect(() => {
     const ids = [
       setTimeout(() => setShown(1), 900),
@@ -67,94 +43,46 @@ export function BuildingStep({ nodes, weeks, onDone, durationMs = 6500 }: Props)
     return () => ids.forEach(clearTimeout);
   }, [durationMs, finish]);
 
-  const lines = [
-    "Mapping your gaps",
-    "Ordering skills",
-    `Planning ${weeks} week${weeks === 1 ? "" : "s"}`,
-  ];
+  const lines = ["Mapping your gaps", "Ordering skills", `Planning ${weeks} week${weeks === 1 ? "" : "s"}`];
 
   return (
-    <MotionConfig reducedMotion="user">
-      <div className="relative min-h-dvh overflow-x-hidden">
-        {/* Soft green glow drifting behind everything */}
-        <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-          <motion.div
-            className="absolute -left-40 top-20 size-[520px] rounded-full bg-[#BEF264]/10 blur-3xl"
-            animate={{ x: [0, 80, 0], y: [0, 50, 0] }}
-            transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-          />
-          <motion.div
-            className="absolute -right-32 bottom-0 size-[560px] rounded-full bg-[#047857]/20 blur-3xl"
-            animate={{ x: [0, -70, 0], y: [0, -60, 0] }}
-            transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
-          />
+    <div className="contour min-h-dvh">
+      <header className="mx-auto flex h-[72px] max-w-5xl items-center px-5">
+        <span className="font-display text-[1.75rem] font-bold leading-none">Ladda</span>
+      </header>
+
+      <main id="main" className="mx-auto max-w-5xl px-4 pb-16 pt-6 md:pt-10">
+        <h1 className="display-md">Laying down your trail</h1>
+        <p className="mt-3 text-lg text-text-soft">Built from your answers. This takes a few seconds.</p>
+
+        <div className="relative mt-8 aspect-[1100/760] overflow-hidden rounded-[1.25rem] border border-line bg-understory">
+          <ContourBackdrop />
+          <div className="absolute inset-0">
+            <RoadmapTrail nodes={nodes} />
+          </div>
         </div>
 
-        <header className="mx-auto flex max-w-5xl items-center px-5 pt-6">
-          <span className="font-heading text-xl font-extrabold">
-            Ladda<span className="text-brand">.</span>
-          </span>
-        </header>
-
-        <main className="mx-auto max-w-[1180px] px-4 pb-16 pt-8 text-center md:pt-12">
-          <motion.div variants={fadeUp} initial="hidden" animate="show">
-            <h1 className="text-3xl font-extrabold md:text-5xl">Laying down your road</h1>
-            <p className="mt-2 text-muted-foreground md:text-lg">
-              Built from your answers. Just a moment.
-            </p>
-          </motion.div>
-
-          {/* Road card */}
-          <div className="glow mt-8 rounded-[2rem] border bg-card/80 p-3 sm:p-5">
-            <div
-              ref={outerRef}
-              className="relative w-full overflow-hidden"
-              style={{
-                height: innerH ? innerH * scale : undefined,
-                visibility: innerH ? "visible" : "hidden",
-              }}
-            >
-              <div
-                ref={innerRef}
-                className="pointer-events-none mx-auto"
-                style={{ width: ROAD_W, transform: `scale(${scale})`, transformOrigin: "top left" }}
+        <ul className="mt-6 flex min-h-12 flex-wrap gap-x-6 gap-y-2" aria-live="polite">
+          {lines.slice(0, shown).map((text, i) => (
+            <li key={text} className="flex items-center gap-2 font-medium">
+              <span
+                aria-hidden="true"
+                className={`grid size-5 place-items-center rounded-full border-2 ${
+                  i < done ? "border-volt bg-volt text-[#04110a]" : "border-node-mute"
+                }`}
               >
-                <RoadmapRoad nodes={nodes} />
-              </div>
-            </div>
-          </div>
+                {i < done && <Check className="size-3" strokeWidth={3} />}
+              </span>
+              {text}
+              <span className="sr-only">{i < done ? ", done" : ", working"}</span>
+            </li>
+          ))}
+        </ul>
 
-          {/* Ticking checklist */}
-          <div className="mt-8 flex min-h-12 flex-wrap justify-center gap-3">
-            {lines.slice(0, shown).map((text, i) => (
-              <motion.div
-                key={text}
-                initial={{ opacity: 0, y: 10, scale: 0.9 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={spring}
-                className="flex items-center gap-2 rounded-full border bg-card px-4 py-2 text-sm font-semibold"
-              >
-                <span
-                  className={`grid size-5 place-items-center rounded-full ${
-                    i < done ? "bg-brand text-black" : "text-primary"
-                  }`}
-                >
-                  {i < done ? <Check className="size-3.5" /> : <Loader2 className="size-4 animate-spin" />}
-                </span>
-                {text}
-              </motion.div>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            onClick={finish}
-            className="tag-label mt-6 rounded-full border px-5 py-2 text-muted-foreground transition hover:text-foreground"
-          >
-            Skip
-          </button>
-        </main>
-      </div>
-    </MotionConfig>
+        <button type="button" onClick={finish} className="btn btn-secondary mt-6">
+          Skip to my roadmap
+        </button>
+      </main>
+    </div>
   );
 }
