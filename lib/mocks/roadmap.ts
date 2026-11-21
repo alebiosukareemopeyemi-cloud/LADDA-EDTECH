@@ -60,13 +60,14 @@ export const mockRoadmap: Roadmap = {
   hoursPerWeek: 10,
 };
 
-export function mockNodeDetail(id: string): NodeDetail | null {
-  const n = nodes.find((x) => x.id === id);
+// `nodeList` lets the caller pass nodes that already include saved progress.
+export function mockNodeDetail(id: string, nodeList: RoadmapNode[] = nodes): NodeDetail | null {
+  const n = nodeList.find((x) => x.id === id);
   const s = catalog.skills.find((x) => x.id === id);
   if (!n || !s) return null;
 
   const blockers = n.blockedBy
-    .map((b) => nodes.find((x) => x.id === b)?.title)
+    .map((b) => nodeList.find((x) => x.id === b)?.title)
     .filter(Boolean)
     .join(" and ");
   const lockedReason = `Finish ${blockers} first`;

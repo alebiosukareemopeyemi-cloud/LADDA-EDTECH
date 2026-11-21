@@ -4,9 +4,20 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Check, Clock, ExternalLink, Lock, Wrench } from "lucide-react";
-import { getNodeDetail } from "@/lib/api/client";
-import type { NodeDetail, NodeStatus, ProjectBrief, Resource, StepId } from "@/lib/contract";
+import { getNodeDetail, getRoadmap, rememberApproval, reviewRepo } from "@/lib/api/client";
+import type {
+  NodeDetail,
+  NodeStatus,
+  ProjectBrief,
+  Resource,
+  ReviewedResponse,
+  Roadmap,
+  RoadmapNode,
+  StepId,
+} from "@/lib/contract";
 import { CertificatesPanel } from "@/components/roadmap/CertificatesPanel";
+import UnlockMoment from "@/components/roadmap/UnlockMoment";
+import { applyVerified, isTrackComplete, newlyUnlocked } from "@/lib/roadmap/progress";
 import { usePlay } from "@/lib/motion";
 
 const statusText: Record<NodeStatus, string> = {
@@ -16,29 +27,7 @@ const statusText: Record<NodeStatus, string> = {
   verified: "Verified",
 };
 
-const PASS_MARK = 70;
-const STEP_MS = 650;
-
-// ---- Mock review (swapped for the real review later) ----
-type Review = { approved: boolean; score: number; scores: number[]; feedback: string };
-
-function fakeReview(url: string, count: number): Review {
-  const fail = url.toLowerCase().includes("fail");
-  const scores = Array.from({ length: count }, (_, i) => {
-    const seed = (url.length * 7 + i * 13) % 11;
-    return fail ? 38 + seed * 2 + (i === 0 ? 20 : 0) : 78 + seed;
-  });
-  const score = Math.round(scores.reduce((a, b) => a + b, 0) / Math.max(1, scores.length));
-  const approved = !fail && score >= PASS_MARK;
-  return {
-    approved,
-    score,
-    scores,
-    feedback: approved
-      ? "Solid structure and a clear README. Nice work."
-      : "Some checks are not met yet. Fix the ones marked below, then submit again.",
-  };
-}
+const STEP_MS = 450;
 
 // ---- Learn ----
 function LearnPanel({ resources, hasRepo }: { resources: Resource[]; hasRepo: boolean }) {
@@ -70,33 +59,34 @@ function LearnPanel({ resources, hasRepo }: { resources: Resource[]; hasRepo: bo
           ))}
         </ul>
       )}
-      {hasRepo && (
-        <p className="mt-4 text-sm text-text-mute">Study it in a real repo is coming soon.</p>
-      )}
+      {hasRepo && <p className="mt-4 text-sm text-text-mute">Study it in a real repo is coming soon.</p>}
     </div>
   );
 }
 
 // ---- Build ----
-type Phase = "idle" | "pending" | "done";
+type Phase = "idle" | "pending" | "done" | "unavailable";
 
 function BuildPanel({
+  nodeId,
   project,
   suggested,
   approved,
   onApproved,
 }: {
+  nodeId: string;
   project: ProjectBrief | undefined;
   suggested: ProjectBrief[];
   approved: boolean;
-  onApproved: () => void;
+  onApproved: (r: ReviewedResponse) => void;
 }) {
   const play = usePlay();
   const [url, setUrl] = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
-  const [review, setReview] = useState<Review | null>(null);
+  const [result, setResult] = useState<ReviewedResponse | null>(null);
   const [resolved, setResolved] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const timers = useRef<number[]>([]);
 
   useEffect(() => {
@@ -114,62 +104,79 @@ function BuildPanel({
   const brief = project;
   const n = brief.criteria.length;
 
-  function submit() {
+  async function submit() {
     const v = url.trim();
     if (!/^https:\/\/github\.com\/[^\s/]+\/[^\s/]+/i.test(v)) {
       setProblem("Paste a full GitHub repo link that starts with https://github.com/, for example https://github.com/you/project.");
       return;
     }
     setProblem(null);
-    const result = fakeReview(v, n);
-    setReview(result);
+    setNotice(null);
+    setResult(null);
+    setResolved(0);
+    setPhase("pending");
+
+    const res = await reviewRepo(nodeId, v);
+    if (!res.ok) {
+      setPhase("idle");
+      setProblem(
+        res.code === "RATE_LIMITED"
+          ? res.message
+          : res.code === "VALIDATION"
+            ? res.message
+            : "We could not reach the review service. Check your connection and select Submit project again."
+      );
+      return;
+    }
+    if (res.data.status === "unavailable") {
+      setPhase("unavailable");
+      setNotice(res.data.message);
+      return;
+    }
+
+    const r = res.data;
+    setResult(r);
     timers.current.forEach((id) => window.clearTimeout(id));
     timers.current = [];
-
     const finish = () => {
       setResolved(n);
       setPhase("done");
-      if (result.approved) onApproved();
+      if (r.approved) {
+        rememberApproval(nodeId, r);
+        onApproved(r);
+      }
     };
     if (!play) return finish();
-
-    // The checks resolve one by one.
-    setPhase("pending");
-    setResolved(0);
+    // The checks resolve one by one, now that the verdict is in.
     for (let i = 1; i <= n; i++) {
       timers.current.push(window.setTimeout(() => (i === n ? finish() : setResolved(i)), i * STEP_MS));
     }
   }
 
-  const showChecks = phase !== "idle";
+  const reviewing = phase === "pending" || (phase === "done" ? false : result !== null);
+  const showChecks = phase !== "idle" && phase !== "unavailable";
 
   return (
     <div>
       <h2 className="font-display text-3xl font-bold leading-none">{brief.title}</h2>
       <p className="measure mt-3 text-text-soft">{brief.brief}</p>
 
-      {/* Acceptance checklist, and the live result when there is one */}
       <h3 className="mt-7 font-display text-2xl font-semibold leading-none">
         {showChecks ? "Review" : "What the reviewer checks"}
       </h3>
       <ul className="mt-3 divide-y divide-line border-y border-line" aria-live="polite">
         {brief.criteria.map((c, i) => {
-          const score = phase === "done" && review ? review.scores[i] : null;
+          const check = result?.checks.find((x) => x.criterion === c);
+          const settled = !!check && (phase === "done" || i < resolved);
           const state: "waiting" | "checking" | "pass" | "fail" =
             approved && phase === "idle"
               ? "pass"
-              : phase === "pending"
-                ? i < resolved
-                  ? review && review.scores[i] >= PASS_MARK
-                    ? "pass"
-                    : "fail"
-                  : i === resolved
-                    ? "checking"
-                    : "waiting"
-                : score !== null
-                  ? score >= PASS_MARK
-                    ? "pass"
-                    : "fail"
+              : settled
+                ? check.pass
+                  ? "pass"
+                  : "fail"
+                : phase === "pending" || reviewing
+                  ? "checking"
                   : "waiting";
           return (
             <li key={c} className="py-3">
@@ -191,15 +198,18 @@ function BuildPanel({
                   {state === "fail" && "Needs work"}
                   {state === "checking" && "Checking"}
                   {state === "waiting" && (showChecks ? "Waiting" : "")}
-                  {score !== null && <span className="data ml-2 font-normal">{score}</span>}
                 </span>
               </p>
-              {state === "fail" && phase === "done" && (
-                <p className="mt-2 pl-8 text-sm text-text-soft">
-                  <span className="font-semibold text-kola">How to fix it: </span>
-                  Re-read the brief for &ldquo;{c}&rdquo;, change your repo so this point is clearly met, and say how in
-                  the README. Then submit again.
-                </p>
+              {settled && check && (
+                <div className="mt-2 pl-8 text-sm">
+                  <p className="text-text-mute">{check.evidence}</p>
+                  {!check.pass && check.fix && (
+                    <p className="mt-1 text-text-soft">
+                      <span className="font-semibold text-kola">How to fix it: </span>
+                      {check.fix}
+                    </p>
+                  )}
+                </div>
               )}
             </li>
           );
@@ -210,22 +220,38 @@ function BuildPanel({
       <div id="submit" className="mt-8 scroll-mt-20">
         {phase === "pending" && (
           <p role="status" className="font-medium">
-            Reviewing your repo. Each check appears above as it finishes.
+            Reading your repo and reviewing it. This takes up to half a minute.
           </p>
         )}
 
-        {phase === "done" && review && (
-          <div role="status" className={`border-l-2 pl-4 ${review.approved ? "border-volt" : "border-kola"}`}>
-            <p className={`font-display text-4xl font-bold leading-none ${review.approved ? "text-volt" : "text-kola"}`}>
-              {review.approved ? "Approved" : "Needs work"}
+        {phase === "unavailable" && (
+          <div role="status" className="border-l-2 border-kola pl-4">
+            <p className="font-medium">{notice}</p>
+            <p className="mt-1 text-sm text-text-mute">Nothing was saved, and your skill status is unchanged.</p>
+            <button type="button" onClick={() => setPhase("idle")} className="btn btn-secondary mt-4">
+              Try again
+            </button>
+          </div>
+        )}
+
+        {phase === "done" && result && (
+          <div role="status" className={`border-l-2 pl-4 ${result.approved ? "border-volt" : "border-kola"}`}>
+            <p className={`font-display text-4xl font-bold leading-none ${result.approved ? "text-volt" : "text-kola"}`}>
+              {result.approved ? "Approved" : "Needs work"}
             </p>
             <p className="mt-2 text-lg">
-              Score <span className="data font-semibold">{review.score}</span> out of 100
+              <span className="data font-semibold">{result.checks.filter((c) => c.pass).length}</span> of{" "}
+              <span className="data">{result.checks.length}</span> checks passed
             </p>
-            <p className="mt-1 max-w-[52ch] text-text-soft">{review.feedback}</p>
-            {!review.approved && (
+            <p className="mt-1 text-sm text-text-mute">
+              {result.source === "gemini"
+                ? "Reviewed by the AI reviewer from your repo files."
+                : "The AI reviewer was not available, so this is a file check only. The code was not run."}{" "}
+              {result.remaining} reviews left this hour.
+            </p>
+            {!result.approved && (
               <button type="button" onClick={() => setPhase("idle")} className="btn btn-secondary mt-4">
-                Fix and submit again
+                Resubmit
               </button>
             )}
           </div>
@@ -287,6 +313,7 @@ function BuildPanel({
 
 // ---- Page ----
 type Load = { kind: "loading" } | { kind: "ready"; detail: NodeDetail } | { kind: "error" };
+type Moment = { verified: RoadmapNode; unlocked: RoadmapNode[]; complete: boolean };
 
 export default function NodePage() {
   const { node } = useParams<{ node: string }>();
@@ -294,6 +321,8 @@ export default function NodePage() {
   const [attempt, setAttempt] = useState(0);
   const [active, setActive] = useState<StepId | null>(null);
   const [approved, setApproved] = useState(false);
+  const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
+  const [moment, setMoment] = useState<Moment | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -306,6 +335,7 @@ export default function NodePage() {
       const next = res.data.node.nextStep;
       setActive(wantsSubmit ? "build" : next !== "done" ? next : null);
     });
+    getRoadmap().then((res) => alive && res.ok && setRoadmap(res.data));
     return () => {
       alive = false;
     };
@@ -351,7 +381,20 @@ export default function NodePage() {
   const { detail } = load;
   const assigned = detail.projects.find((p) => p.kind === "assigned");
   const suggested = detail.projects.filter((p) => p.kind === "suggested");
-  const statusLabel = detail.node.locked ? "Locked" : approved ? "Verified" : statusText[detail.node.status];
+  const isVerified = approved || detail.node.status === "verified";
+  const statusLabel = detail.node.locked ? "Locked" : isVerified ? "Verified" : statusText[detail.node.status];
+
+  // When a review passes: what opens up, and is the whole path done?
+  function onApproved() {
+    if (!roadmap) {
+      setApproved(true);
+      return;
+    }
+    const after = applyVerified(roadmap, [detail.node.id]);
+    const me = after.nodes.find((n) => n.id === detail.node.id) as RoadmapNode;
+    setMoment({ verified: me, unlocked: newlyUnlocked(roadmap, after), complete: isTrackComplete(after) });
+    setApproved(true);
+  }
 
   const tabs: { id: StepId; label: string; disabled: boolean; note: string | null }[] = detail.steps.map((s) => ({
     id: s.id,
@@ -371,8 +414,9 @@ export default function NodePage() {
         <h1 className="display-md">{detail.node.title}</h1>
         <p className="measure mt-3 text-lg text-text-soft">{detail.node.blurb}</p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <span className={`badge ${approved || detail.node.status === "verified" ? "badge-verified" : detail.node.locked ? "badge-locked" : "badge-todo"}`}>
+          <span className={`badge ${isVerified ? "badge-verified" : detail.node.locked ? "badge-locked" : "badge-todo"}`}>
             {detail.node.locked && <Lock aria-hidden="true" />}
+            {isVerified && <Check aria-hidden="true" />}
             {statusLabel}
           </span>
           <span className="badge badge-todo">
@@ -410,13 +454,16 @@ export default function NodePage() {
         {active === "build" && (
           <BuildPanel
             key={detail.node.id}
+            nodeId={detail.node.id}
             project={assigned}
             suggested={suggested}
-            approved={approved || detail.node.status === "verified"}
-            onApproved={() => setApproved(true)}
+            approved={isVerified}
+            onApproved={onApproved}
           />
         )}
       </section>
+
+      {moment && <UnlockMoment verified={moment.verified} unlocked={moment.unlocked} complete={moment.complete} />}
 
       <CertificatesPanel suggested={detail.suggestedCertificates} />
     </main>

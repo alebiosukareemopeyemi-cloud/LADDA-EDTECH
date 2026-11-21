@@ -11,6 +11,9 @@ import {
   DemoResultSchema,
   SuggestPathsResponseSchema,
   BuildRoadmapResponseSchema,
+  ReviewResponseSchema,
+  type ReviewResponse,
+  type ReviewedResponse,
   type ApiResult,
   type BuildRoadmapRequest,
   type BuildRoadmapResponse,
@@ -35,6 +38,8 @@ import {
 } from "@/lib/mocks/other";
 import { mockPaths } from "@/lib/mocks/intake";
 import { buildPlannedRoadmap } from "@/lib/intake/planner";
+import { applyVerified } from "@/lib/roadmap/progress";
+import { localVerifiedIds, markLocalVerified } from "@/lib/review/local";
 
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === "1";
 
@@ -89,17 +94,38 @@ function savedIntakeRoadmap(): Roadmap | null {
 }
 
 // ---- Roadmap and nodes ----
+// Mock mode: the roadmap Intake built (or the demo student), plus whatever this browser has verified.
+function mockRoadmapNow(): Roadmap {
+  return applyVerified(savedIntakeRoadmap() ?? mockRoadmap, localVerifiedIds());
+}
+
 export async function getRoadmap(): Promise<ApiResult<Roadmap>> {
-  if (USE_MOCKS) return mock(savedIntakeRoadmap() ?? mockRoadmap);
+  if (USE_MOCKS) return mock(mockRoadmapNow());
   return call("/api/roadmap", RoadmapSchema);
 }
 
 export async function getNodeDetail(nodeId: string): Promise<ApiResult<NodeDetail>> {
   if (USE_MOCKS) {
-    const d = mockNodeDetail(nodeId);
+    const d = mockNodeDetail(nodeId, mockRoadmapNow().nodes);
     return d ? mock(d) : notFound();
   }
   return call(`/api/roadmap?node=${encodeURIComponent(nodeId)}`, NodeDetailSchema);
+}
+
+// ---- Live repo review (real in both modes: only where the result is saved differs) ----
+export async function reviewRepo(nodeId: string, repoUrl: string): Promise<ApiResult<ReviewResponse>> {
+  return call("/api/review", ReviewResponseSchema, post({ nodeId, repoUrl }));
+}
+
+// Keep an approved review so a demo survives a refresh. Mock mode only: the server saves it otherwise.
+export function rememberApproval(nodeId: string, r: ReviewedResponse) {
+  if (!USE_MOCKS) return;
+  markLocalVerified(nodeId, {
+    repoUrl: r.repo.url,
+    commitHash: r.repo.commit ?? "unknown",
+    criteria: r.checks.map((c) => c.criterion),
+    at: new Date().toISOString(),
+  });
 }
 
 // ---- Intake ----

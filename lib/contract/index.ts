@@ -6,3 +6,4 @@ export * from "./intake";
 export * from "./credential";
 export * from "./opportunity";
 export * from "./demo";
+export * from "./review";

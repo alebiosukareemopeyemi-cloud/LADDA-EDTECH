@@ -9,7 +9,7 @@ const HOME = "/dashboard";
 const ENFORCE_INTAKE = true;
 
 // /design and /dev are throwaway pages; remove them here when you delete them.
-const PUBLIC_PREFIXES = ["/auth", "/verify", "/tour", "/api/demo", "/api/verify", "/design", "/dev"];
+const PUBLIC_PREFIXES = ["/auth", "/verify", "/tour", "/api/demo", "/api/verify", "/api/dev", "/design", "/dev"];
 
 function isPublic(path: string) {
   return (
@@ -66,8 +66,16 @@ export async function middleware(request: NextRequest) {
   // 1. Public routes
   if (isPublic(path)) return response;
 
-  // 2. Not signed in: send to /auth
-  if (!user) return go("/auth");
+  // 2. Not signed in: send to /auth (API calls get a JSON 401 instead of a redirect)
+  if (!user) {
+    if (path.startsWith("/api/")) {
+      return NextResponse.json(
+        { ok: false, code: "UNAUTHENTICATED", message: "Please sign in again." },
+        { status: 401 }
+      );
+    }
+    return go("/auth");
+  }
 
   // 3. Email unverified: send to /auth/verify-email
   if (!user.email_confirmed_at) return go("/auth/verify-email");

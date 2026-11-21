@@ -83,3 +83,23 @@ grant select on public.user_nodes to authenticated;
 grant all privileges on public.profiles   to service_role;
 grant all privileges on public.user_nodes to service_role;
 grant all privileges on all sequences in schema public to service_role;
+
+-- ================================================================ live review
+-- The latest passing review for each verified skill. Written by /api/review with the
+-- service-role key, read by credential issuing. Students never read it directly.
+
+create table if not exists public.reviews (
+  user_id     uuid not null references auth.users (id) on delete cascade,
+  skill_id    text not null,
+  repo_url    text not null,
+  commit_sha  text,
+  source      text not null check (source in ('gemini', 'heuristic')),
+  checks      jsonb not null,
+  created_at  timestamptz not null default now(),
+  primary key (user_id, skill_id)
+);
+
+alter table public.reviews enable row level security;
+-- No policies on purpose: only the service role can read or write this table.
+
+grant all privileges on public.reviews to service_role;
