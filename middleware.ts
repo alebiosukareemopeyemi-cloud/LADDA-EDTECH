@@ -28,6 +28,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Test only: lets the accessibility script open signed-in screens against mock data.
+  // Needs BOTH a development server and an explicit env flag, and does nothing in a production build.
+  if (process.env.NODE_ENV === "development" && process.env.LADDA_E2E_BYPASS === "1") {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

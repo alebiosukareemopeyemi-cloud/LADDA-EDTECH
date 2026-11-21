@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --no-warnings --test \"tests/**/*.test.ts\"",
+    "a11y": "node scripts/a11y.mjs",
     "test:greyscale": "node --no-warnings scripts/greyscale-test.mjs"
   },
   "dependencies": {
