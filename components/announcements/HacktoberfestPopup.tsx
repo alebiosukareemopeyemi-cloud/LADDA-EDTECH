@@ -2,17 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { opportunities, getStatus } from "@/content/opportunities";
 
 const OPPORTUNITY_ID = "aws-hacktoberfest";
 const STORAGE_KEY = "ladda:hacktoberfest-popup-dismissed";
 
+// A one-time notice while the event is still running.
 export default function HacktoberfestPopup() {
   const router = useRouter();
-  const reduce = useReducedMotion();
   const [open, setOpen] = useState(false);
   const lookRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const o = opportunities.find((x) => x.id === OPPORTUNITY_ID);
 
@@ -39,87 +39,59 @@ export default function HacktoberfestPopup() {
     router.push(`/opportunities/${OPPORTUNITY_ID}`);
   }
 
-  // Escape closes, and focus moves to the main button.
+  // Focus moves in, Tab stays inside, Escape closes.
   useEffect(() => {
     if (!open) return;
     lookRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") dismiss();
+      if (e.key === "Escape") return dismiss();
+      if (e.key !== "Tab") return;
+      const items = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>("button, a[href]") ?? []);
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  if (!o) return null;
+  if (!o || !open) return null;
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            onClick={dismiss}
-            aria-hidden="true"
-          />
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="hacktoberfest-title"
-            initial={reduce ? false : { opacity: 0, y: 24, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={reduce ? { opacity: 0 } : { opacity: 0, y: 12, scale: 0.97 }}
-            transition={{ type: "spring", stiffness: 260, damping: 24 }}
-            className="relative w-full max-w-md overflow-hidden rounded-[32px] border border-white/10 bg-[#0B100D] text-white shadow-[0_0_80px_-20px_rgba(190,242,100,0.45)]"
-          >
-            <div className="h-1.5 bg-gradient-to-r from-[#047857] to-[#BEF264]" />
-            <div className="p-8">
-              <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-[#BEF264]">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#BEF264] opacity-70" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#BEF264]" />
-                </span>
-                AWS Hacktoberfest is live
-              </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70" onClick={dismiss} aria-hidden="true" />
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="hacktoberfest-title"
+        className="surface-raised relative w-full max-w-md p-8"
+      >
+        <p className="text-sm font-semibold text-volt">AWS Hacktoberfest is live</p>
+        <h2 id="hacktoberfest-title" className="mt-2 font-display text-4xl font-bold leading-none">
+          Check it out now
+        </h2>
+        <p className="mt-3 text-text-soft">{o.blurb}</p>
+        <p className="mt-4 text-sm text-text-mute">
+          <span className="font-medium text-text-soft">{o.prize}</span>. {o.dateLabel}.
+        </p>
 
-              <h2 id="hacktoberfest-title" className="mt-4 text-3xl font-bold leading-tight">
-                Check it out now
-              </h2>
-              <p className="mt-2 text-white/60">{o.blurb}</p>
-
-              <div className="mt-5 flex flex-wrap gap-2">
-                <span className="rounded-full border border-white/10 px-3 py-1 font-mono text-xs text-[#BEF264]">
-                  {o.prize}
-                </span>
-                <span className="rounded-full border border-white/10 px-3 py-1 font-mono text-xs text-white/60">
-                  {o.dateLabel}
-                </span>
-              </div>
-
-              <div className="mt-8 flex flex-wrap gap-3">
-                <button
-                  ref={lookRef}
-                  onClick={lookInto}
-                  className="rounded-full bg-gradient-to-r from-[#047857] to-[#BEF264] px-6 py-3 font-semibold text-black transition-transform hover:-translate-y-0.5 active:scale-95"
-                >
-                  Look into it
-                </button>
-                <button
-                  onClick={dismiss}
-                  className="rounded-full border border-white/15 px-6 py-3 font-medium text-white/80 transition-colors hover:border-white/40"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        <div className="mt-7 flex flex-wrap gap-3">
+          <button ref={lookRef} type="button" onClick={lookInto} className="btn btn-primary">
+            Look into it
+          </button>
+          <button type="button" onClick={dismiss} className="btn btn-secondary">
+            Not now
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

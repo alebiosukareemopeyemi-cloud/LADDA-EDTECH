@@ -12,9 +12,17 @@ const MENU: { label: string; href: string | null }[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Roadmap", href: "/roadmap" },
   { label: "Opportunities", href: "/opportunities" },
+  { label: "Notes", href: null },
   { label: "Leaderboard", href: null },
-  { label: "Your Notes", href: null },
   { label: "Connect", href: null },
+];
+
+// The tabs in the top bar. Notes and Leaderboard are not built yet.
+const TABS: { label: string; href: string | null }[] = [
+  { label: "Roadmap", href: "/roadmap" },
+  { label: "Opportunities", href: "/opportunities" },
+  { label: "Notes", href: null },
+  { label: "Leaderboard", href: null },
 ];
 
 function Wordmark({ className = "" }: { className?: string }) {
@@ -131,7 +139,7 @@ export default function AppShell() {
               onClick={() => setMenuOpen(true)}
               aria-label="Open menu"
               aria-expanded={menuOpen}
-              className="nav-link size-11 justify-center !p-0"
+              className="nav-link size-11 justify-center !p-0 md:hidden"
             >
               <span className="flex flex-col gap-1">
                 <span className="h-0.5 w-5 rounded bg-text" />
@@ -145,16 +153,28 @@ export default function AppShell() {
           </div>
 
           <div className="hidden items-center gap-1 md:flex">
-            {MENU.filter((m) => m.href).map((m) => (
-              <Link
-                key={m.label}
-                href={m.href as string}
-                className="nav-link"
-                aria-current={pathname.startsWith(m.href as string) ? "page" : undefined}
-              >
-                {m.label}
-              </Link>
-            ))}
+            {TABS.map((m) =>
+              m.href ? (
+                <Link
+                  key={m.label}
+                  href={m.href}
+                  className="nav-link"
+                  aria-current={pathname.startsWith(m.href) ? "page" : undefined}
+                >
+                  {m.label}
+                </Link>
+              ) : (
+                <span
+                  key={m.label}
+                  aria-disabled="true"
+                  title="Coming soon"
+                  className="nav-link cursor-default text-text-mute hover:bg-transparent hover:text-text-mute"
+                >
+                  {m.label}
+                  <span className="sr-only"> (coming soon)</span>
+                </span>
+              )
+            )}
           </div>
 
           <div ref={profileRef} className="relative">
