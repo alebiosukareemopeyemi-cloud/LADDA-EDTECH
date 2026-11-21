@@ -510,24 +510,9 @@
   animation: beacon 2.4s ease-out infinite;
 }
 
-/* Loading shimmer (feedback, not decoration). */
-@keyframes shimmer {
-  from {
-    background-position: -200% 0;
-  }
-  to {
-    background-position: 200% 0;
-  }
-}
+/* Loading placeholder: a still block. No shimmer. */
 @utility skeleton {
-  background-image: linear-gradient(
-    90deg,
-    var(--color-line) 25%,
-    var(--color-line-strong) 50%,
-    var(--color-line) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.6s linear infinite;
+  background: var(--color-line);
 }
 
 /* Reduced motion switches every animation and transition off. */

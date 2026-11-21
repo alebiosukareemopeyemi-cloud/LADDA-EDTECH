@@ -68,7 +68,7 @@ type PillProps = {
   label?: string;
 };
 
-function Pill({ node: n, index: i, point: p, width, height, highlighted, showHere, onSelect, label }: PillProps) {
+function Pill({ node: n, index: i, point: p, width, height, highlighted, showHere, onSelect }: PillProps) {
   const shake = useAnimationControls();
   const lockWiggle = useAnimationControls();
   const look: Look = n.locked ? "locked" : n.status;

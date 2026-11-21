@@ -28,6 +28,40 @@ export default function AppShell() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLElement>(null);
+
+  // Menu drawer: move focus in, keep Tab inside, give focus back on close.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const trigger = triggerRef.current;
+    const drawer = drawerRef.current;
+    const selector = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const focusables = () => Array.from(drawer?.querySelectorAll<HTMLElement>(selector) ?? []);
+    focusables()[0]?.focus();
+
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Tab") return;
+      const items = focusables();
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      const outside = !drawer?.contains(active);
+      if (e.shiftKey && (active === first || outside)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (active === last || outside)) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      trigger?.focus();
+    };
+  }, [menuOpen]);
 
   // Close everything when the page changes.
   useEffect(() => {
@@ -93,6 +127,7 @@ export default function AppShell() {
         <nav aria-label="Main" className="topbar-inner">
           <div className="flex items-center gap-2">
             <button
+              ref={triggerRef}
               onClick={() => setMenuOpen(true)}
               aria-label="Open menu"
               aria-expanded={menuOpen}
@@ -185,7 +220,9 @@ export default function AppShell() {
               aria-hidden="true"
             />
             <motion.nav
+              ref={drawerRef}
               role="dialog"
+              aria-modal="true"
               aria-label="Menu"
               className="fixed bottom-0 left-0 top-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-line-strong bg-understory p-6"
               initial={{ x: -300 }}

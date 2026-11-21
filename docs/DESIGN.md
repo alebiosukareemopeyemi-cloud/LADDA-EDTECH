@@ -70,7 +70,7 @@ Three moments, and no others. All of them are off under `prefers-reduced-motion`
 2. The unlock chain: the next nodes light up in sequence (`unlockChain`, `unlockStep`).
 3. The seal stamps onto the credential (`sealStamp`: scale 1.7 and rotate -16 to rest, 0.55s, `cubic-bezier(.2, 1.5, .4, 1)`).
 
-Allowed exceptions that are state, not decoration: the beacon ring on an in-progress marker (part of the marker spec; frozen to a faint static ring under reduced motion), and the loading shimmer. No fade-up entrances, no hover-lift on cards.
+The one allowed exception is the beacon ring on an in-progress marker (part of the marker spec; frozen to a faint static ring under reduced motion). Loading placeholders (`skeleton`) are still blocks, with no shimmer. No fade-up entrances, no hover-lift on cards.
 
 `usePlay()` and `usePlayProps()` in `lib/motion.ts` gate each moment. `MotionProvider` also sets `reducedMotion="user"`. Old presets (`fadeUp`, `pop`, `container`, `hoverLift`, pulses) are exported as inert no-ops until each page is rebuilt.
 
@@ -84,16 +84,19 @@ Allowed exceptions that are state, not decoration: the beacon ring on an in-prog
 
 Radius follows hierarchy: pills for controls, 20px for panels, 12px for inner blocks, 6px for the passport.
 
-## Rules
+## Rules (anti-slop)
 
-1. No repeated identical card grids.
-2. No all-caps tracked eyebrow labels.
-3. No numbered markers unless the content is a sequence.
-4. No arrow appended to buttons.
-5. No single highlighted word in a headline.
-6. No fade-up on sections. Motion is the three moments above.
-7. Glow only where the CTA gradient already is. Nothing glows else.
-8. Serif only on the credential.
+1. No identical rounded cards in a grid. Items that sit together differ in size or form.
+2. No big-number gradient stat tiles.
+3. No all-caps eyebrow labels, tracked or not.
+4. No 01/02/03 numbering unless the content is a real sequence.
+5. No middle-dot meta strings ("A · B · C").
+6. No arrows appended to buttons or links.
+7. No accenting one headline word in colour.
+8. Plain verbs on buttons: "Start free", "Sign in", "Submit project". Never "Submit" or "Click here".
+9. No fade-up on sections. Motion is the three moments above, plus the beacon.
+10. Glow only where the CTA gradient already is. Nothing else glows.
+11. Serif only on the credential.
 
 ## Accessibility
 
@@ -109,4 +112,4 @@ Contrast computed on the real tokens (all text 4.5:1 or better):
 
 Focus is always visible. Reduced motion disables CSS animation, transitions and all framer-motion moments. Markers expose `role="img"` with the name, state and percent.
 
-Known gap: the slide-out menu has `role="dialog"` but no focus trap.
+The slide-out menu is a modal dialog: `aria-modal="true"`, focus moves in on open, Tab stays inside, Escape closes, and focus returns to the menu button.
