@@ -17,6 +17,15 @@ const MENU: { label: string; href: string | null }[] = [
   { label: "Connect", href: null },
 ];
 
+function Wordmark({ className = "" }: { className?: string }) {
+  return (
+    <span className={`inline-flex items-baseline gap-0.5 font-heading font-extrabold ${className}`}>
+      Ladda
+      <span className="size-1.5 rounded-full bg-brand" aria-hidden="true" />
+    </span>
+  );
+}
+
 export default function AppShell() {
   const pathname = usePathname();
   const router = useRouter();
@@ -84,22 +93,38 @@ export default function AppShell() {
 
   return (
     <>
-      <header className="fixed inset-x-0 top-0 z-40 h-14 border-b border-white/10 bg-black/60 backdrop-blur-md">
-        <div className="flex h-full items-center justify-between px-4 md:px-10">
-          <div className="flex items-center gap-3">
+      {/* Floating glass nav: one of the three glass surfaces. */}
+      <header className="pointer-events-none fixed inset-x-0 top-2 z-40 flex justify-center">
+        <nav aria-label="Main" className="nav-float glass">
+          <div className="flex items-center gap-1">
             <button
               onClick={() => setMenuOpen(true)}
               aria-label="Open menu"
               aria-expanded={menuOpen}
-              className="flex size-10 flex-col items-center justify-center gap-1.5 rounded-full border border-white/15 transition-colors hover:border-[#BEF264]/50"
+              className="nav-link size-11 justify-center !p-0"
             >
-              <span className="h-0.5 w-4 rounded bg-white" />
-              <span className="h-0.5 w-4 rounded bg-white" />
-              <span className="h-0.5 w-4 rounded bg-white" />
+              <span className="flex flex-col gap-1">
+                <span className="h-0.5 w-4 rounded bg-foreground" />
+                <span className="h-0.5 w-4 rounded bg-foreground" />
+                <span className="h-0.5 w-2.5 rounded bg-foreground" />
+              </span>
             </button>
-            <Link href="/dashboard" className="text-lg font-extrabold">
-              Ladda<span className="text-[#BEF264]">.</span>
+            <Link href="/dashboard" className="px-2 text-lg" aria-label="Ladda home">
+              <Wordmark />
             </Link>
+          </div>
+
+          <div className="hidden items-center gap-1 md:flex">
+            {MENU.filter((m) => m.href).map((m) => (
+              <Link
+                key={m.label}
+                href={m.href as string}
+                className="nav-link"
+                aria-current={pathname.startsWith(m.href as string) ? "page" : undefined}
+              >
+                {m.label}
+              </Link>
+            ))}
           </div>
 
           <div ref={profileRef} className="relative">
@@ -107,7 +132,7 @@ export default function AppShell() {
               onClick={() => setProfileOpen((v) => !v)}
               aria-label="Profile menu"
               aria-expanded={profileOpen}
-              className="flex size-10 items-center justify-center rounded-full bg-gradient-to-br from-[#047857] to-[#BEF264] font-bold text-black transition-transform hover:scale-105 active:scale-95"
+              className="flex size-11 items-center justify-center rounded-full border border-border bg-s3 font-heading font-bold text-primary transition-transform hover:scale-105 active:scale-95"
             >
               {initial ?? (
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -124,26 +149,26 @@ export default function AppShell() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -6, scale: 0.97 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-12 w-64 rounded-3xl border border-white/10 bg-[#0B100D] p-2 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)]"
+                  className="surface-3 absolute right-0 top-14 w-64 p-2"
                 >
                   {email && (
-                    <p className="tag-label truncate px-4 py-3 text-muted-foreground">{email}</p>
+                    <p className="truncate px-4 py-3 text-sm text-muted-foreground">{email}</p>
                   )}
-                  <span className="flex items-center justify-between rounded-full px-4 py-2.5 text-sm text-white/40">
-                    Profile <span className="tag-label">Soon</span>
+                  <span className="flex items-center justify-between rounded-full px-4 py-2.5 text-sm text-muted-foreground/70">
+                    Profile <span className="badge badge-locked">Coming soon</span>
                   </span>
-                  <span className="flex items-center justify-between rounded-full px-4 py-2.5 text-sm text-white/40">
-                    Settings <span className="tag-label">Soon</span>
+                  <span className="flex items-center justify-between rounded-full px-4 py-2.5 text-sm text-muted-foreground/70">
+                    Settings <span className="badge badge-locked">Coming soon</span>
                   </span>
                   <Link
                     href="/verify/demo-001"
-                    className="block rounded-full px-4 py-2.5 text-sm transition-colors hover:bg-white/5"
+                    className="block rounded-full px-4 py-2.5 text-sm transition-colors hover:bg-foreground/5"
                   >
                     Sample credential
                   </Link>
                   <button
                     onClick={signOut}
-                    className="mt-1 block w-full rounded-full px-4 py-2.5 text-left text-sm text-[#BEF264] transition-colors hover:bg-white/5"
+                    className="mt-1 block w-full rounded-full px-4 py-2.5 text-left text-sm text-primary transition-colors hover:bg-foreground/5"
                   >
                     Sign out
                   </button>
@@ -151,15 +176,15 @@ export default function AppShell() {
               )}
             </AnimatePresence>
           </div>
-        </div>
+        </nav>
       </header>
-      <div className="h-14" aria-hidden="true" />
+      <div className="h-16" aria-hidden="true" />
 
       <AnimatePresence>
         {menuOpen && (
           <>
             <motion.div
-              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+              className="fixed inset-0 z-50 bg-black/60"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -169,21 +194,15 @@ export default function AppShell() {
             <motion.nav
               role="dialog"
               aria-label="Menu"
-              className="fixed bottom-0 left-0 top-0 z-50 flex w-72 flex-col border-r border-white/10 bg-[#0B100D] p-6"
+              className="fixed bottom-0 left-0 top-0 z-50 flex w-72 flex-col border-r border-border bg-s3 p-6 shadow-[var(--shadow-s3)]"
               initial={{ x: -300 }}
               animate={{ x: 0 }}
               exit={{ x: -300 }}
               transition={{ type: "spring", stiffness: 300, damping: 32 }}
             >
               <div className="mb-8 flex items-center justify-between">
-                <span className="text-xl font-extrabold">
-                  Ladda<span className="text-[#BEF264]">.</span>
-                </span>
-                <button
-                  onClick={() => setMenuOpen(false)}
-                  aria-label="Close menu"
-                  className="tag-label rounded-full border border-white/15 px-3 py-1.5"
-                >
+                <Wordmark className="text-xl" />
+                <button onClick={() => setMenuOpen(false)} aria-label="Close menu" className="btn btn-glass btn-sm">
                   Close
                 </button>
               </div>
@@ -195,10 +214,11 @@ export default function AppShell() {
                       {m.href ? (
                         <Link
                           href={m.href}
+                          aria-current={active ? "page" : undefined}
                           className={`block rounded-full px-5 py-3 font-medium transition-colors ${
                             active
-                              ? "bg-[#BEF264] text-black"
-                              : "text-white/80 hover:bg-white/5"
+                              ? "bg-primary text-primary-foreground"
+                              : "text-foreground/80 hover:bg-foreground/5"
                           }`}
                         >
                           {m.label}
@@ -206,9 +226,9 @@ export default function AppShell() {
                       ) : (
                         <span
                           aria-disabled="true"
-                          className="flex items-center justify-between rounded-full px-5 py-3 text-white/35"
+                          className="flex items-center justify-between rounded-full px-5 py-3 text-muted-foreground/70"
                         >
-                          {m.label} <span className="tag-label">Soon</span>
+                          {m.label} <span className="badge badge-locked">Coming soon</span>
                         </span>
                       )}
                     </li>

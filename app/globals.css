@@ -8,7 +8,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-body);
-  --font-mono: var(--font-label);
+  --font-mono: var(--font-data);
   --font-heading: var(--font-display);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -40,6 +40,19 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
 
+  /* Ladda palette */
+  --color-pitch: var(--pitch);
+  --color-canopy: var(--canopy);
+  --color-moss: var(--moss);
+  --color-volt: var(--volt);
+  --color-kola: var(--kola);
+  --color-bone: var(--bone);
+  --color-kola-text: var(--kola-text);
+  --color-s0: var(--s0);
+  --color-s1: var(--s1);
+  --color-s2: var(--s2);
+  --color-s3: var(--s3);
+
   /* Ladda node states */
   --color-node-verified: var(--node-verified);
   --color-node-known: var(--node-known);
@@ -47,6 +60,7 @@
   --color-node-todo: var(--node-todo);
   --color-node-locked: var(--node-locked);
 
+  /* Radius follows hierarchy: control (pill), surface, inner, seal */
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -55,115 +69,230 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
   --radius-pill: 9999px;
+  --radius-control: var(--r-control);
+  --radius-surface: var(--r-surface);
+  --radius-inner: var(--r-inner);
+  --radius-seal: var(--r-seal);
+}
+
+/* Constants shared by both themes */
+:root {
+  --pitch: #050e0a;
+  --canopy: #0c1b14;
+  --moss: #047857;
+  --volt: #bef264;
+  --kola: #f2a93b;
+  --bone: #edf2e4;
+
+  --brand-from: var(--moss);
+  --brand-to: var(--volt);
+  --brand-gradient: linear-gradient(135deg, var(--brand-from), var(--brand-to));
+  /* Same gradient, shifted so dark text on it keeps 4.5:1 contrast. */
+  --brand-gradient-text: linear-gradient(135deg, var(--brand-from) -40%, var(--brand-to) 70%);
+
+  --r-control: 9999px;
+  --r-surface: 1.75rem;
+  --r-inner: 0.75rem;
+  --r-seal: 0.25rem;
+  --radius: 1.75rem;
+
+  --font-data: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Consolas, monospace;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Light mode (second set; the app opens in dark) */
 :root {
-  --background: oklch(0.98 0.008 130);
-  --foreground: oklch(0.17 0.02 160);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.17 0.02 160);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.17 0.02 160);
-  --primary: oklch(0.51 0.1 165);
-  --primary-foreground: oklch(0.99 0.005 130);
-  --secondary: oklch(0.95 0.015 140);
-  --secondary-foreground: oklch(0.25 0.03 160);
-  --muted: oklch(0.95 0.015 140);
-  --muted-foreground: oklch(0.5 0.03 160);
-  --accent: oklch(0.93 0.04 135);
-  --accent-foreground: oklch(0.25 0.03 160);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.9 0.02 145);
-  --input: oklch(0.9 0.02 145);
-  --ring: oklch(0.51 0.1 165);
-  --chart-1: oklch(0.9 0.18 125);
-  --chart-2: oklch(0.75 0.15 150);
-  --chart-3: oklch(0.6 0.12 160);
-  --chart-4: oklch(0.51 0.1 165);
-  --chart-5: oklch(0.4 0.08 165);
-  --radius: 1.75rem;
-  --sidebar: oklch(0.97 0.01 135);
-  --sidebar-foreground: oklch(0.17 0.02 160);
-  --sidebar-primary: oklch(0.51 0.1 165);
-  --sidebar-primary-foreground: oklch(0.99 0.005 130);
-  --sidebar-accent: oklch(0.93 0.04 135);
-  --sidebar-accent-foreground: oklch(0.25 0.03 160);
-  --sidebar-border: oklch(0.9 0.02 145);
-  --sidebar-ring: oklch(0.51 0.1 165);
+  --background: #f6f8f1;
+  --foreground: #0b1a12;
+  --card: #ffffff;
+  --card-foreground: #0b1a12;
+  --popover: #ffffff;
+  --popover-foreground: #0b1a12;
+  --primary: #047857;
+  --primary-foreground: #f6f8f1;
+  --secondary: #eaf0e1;
+  --secondary-foreground: #14291d;
+  --muted: #eaf0e1;
+  --muted-foreground: #4a5f53;
+  --accent: #dfeacb;
+  --accent-foreground: #14291d;
+  --destructive: #c2362a;
+  --border: rgb(11 26 18 / 12%);
+  --input: rgb(11 26 18 / 50%);
+  --ring: #047857;
+  --chart-1: #bef264;
+  --chart-2: #6cc38a;
+  --chart-3: #2f9a73;
+  --chart-4: #047857;
+  --chart-5: #04503c;
+  --sidebar: #f0f4e8;
+  --sidebar-foreground: #0b1a12;
+  --sidebar-primary: #047857;
+  --sidebar-primary-foreground: #f6f8f1;
+  --sidebar-accent: #dfeacb;
+  --sidebar-accent-foreground: #14291d;
+  --sidebar-border: rgb(11 26 18 / 12%);
+  --sidebar-ring: #047857;
 
-  --brand-from: #047857;
-  --brand-to: #bef264;
-  --brand-gradient: linear-gradient(135deg, var(--brand-from), var(--brand-to));
-  --glow: 0 0 40px oklch(0.9 0.18 125 / 0.28);
+  /* Surface levels */
+  --s0: #f6f8f1;
+  --s1: #ffffff;
+  --s2: #eef3e6;
+  --s3: #ffffff;
+  --edge-hi: rgb(255 255 255 / 0.9);
+  --line: rgb(11 26 18 / 10%);
+  --shadow-s1: 0 1px 2px rgb(11 26 18 / 6%), 0 12px 32px -16px rgb(11 26 18 / 18%);
+  --shadow-s3: 0 24px 60px -20px rgb(11 26 18 / 30%);
 
-  --node-verified: oklch(0.7 0.16 140);
-  --node-known: oklch(0.7 0.1 165);
-  --node-progress: oklch(0.6 0.16 130);
-  --node-todo: oklch(0.6 0.03 160);
-  --node-locked: oklch(0.75 0.02 160);
+  /* Glass */
+  --glass-fill: rgb(255 255 255 / 0.62);
+  --glass-edge: rgb(11 26 18 / 12%);
+  --glass-hi: rgb(255 255 255 / 0.8);
+
+  --kola-text: #8a5200;
+  --glow: 0 10px 36px -10px rgb(4 120 87 / 0.45);
+
+  --node-verified: #047857;
+  --node-known: #2f9a73;
+  --node-progress: #4d7c0f;
+  --node-todo: #6b7f73;
+  --node-locked: #9aa8a0;
 }
 
 /* Dark mode (default: put class "dark" on <html>) */
 .dark {
-  --background: oklch(0.15 0.012 160);
-  --foreground: oklch(0.96 0.01 150);
-  --card: oklch(0.19 0.014 160);
-  --card-foreground: oklch(0.96 0.01 150);
-  --popover: oklch(0.19 0.014 160);
-  --popover-foreground: oklch(0.96 0.01 150);
-  --primary: oklch(0.9 0.18 125);
-  --primary-foreground: oklch(0.15 0.012 160);
-  --secondary: oklch(0.24 0.02 160);
-  --secondary-foreground: oklch(0.96 0.01 150);
-  --muted: oklch(0.24 0.02 160);
-  --muted-foreground: oklch(0.72 0.03 155);
-  --accent: oklch(0.28 0.05 160);
-  --accent-foreground: oklch(0.96 0.01 150);
-  --destructive: oklch(0.7 0.19 22);
-  --border: oklch(0.95 0.03 150 / 12%);
-  --input: oklch(0.95 0.03 150 / 16%);
-  --ring: oklch(0.85 0.17 125);
-  --chart-1: oklch(0.9 0.18 125);
-  --chart-2: oklch(0.78 0.16 145);
-  --chart-3: oklch(0.65 0.13 160);
-  --chart-4: oklch(0.51 0.1 165);
-  --chart-5: oklch(0.4 0.08 165);
-  --sidebar: oklch(0.17 0.013 160);
-  --sidebar-foreground: oklch(0.96 0.01 150);
-  --sidebar-primary: oklch(0.9 0.18 125);
-  --sidebar-primary-foreground: oklch(0.15 0.012 160);
-  --sidebar-accent: oklch(0.28 0.05 160);
-  --sidebar-accent-foreground: oklch(0.96 0.01 150);
-  --sidebar-border: oklch(0.95 0.03 150 / 12%);
-  --sidebar-ring: oklch(0.85 0.17 125);
+  --background: #050e0a;
+  --foreground: #edf2e4;
+  --card: #0c1b14;
+  --card-foreground: #edf2e4;
+  --popover: #183024;
+  --popover-foreground: #edf2e4;
+  --primary: #bef264;
+  --primary-foreground: #050e0a;
+  --secondary: #12261b;
+  --secondary-foreground: #edf2e4;
+  --muted: #12261b;
+  --muted-foreground: #98ad9f;
+  --accent: #173022;
+  --accent-foreground: #edf2e4;
+  --destructive: #ff7a6b;
+  --border: rgb(237 242 228 / 10%);
+  --input: rgb(237 242 228 / 38%);
+  --ring: #bef264;
+  --chart-1: #bef264;
+  --chart-2: #7bd88f;
+  --chart-3: #3fae85;
+  --chart-4: #047857;
+  --chart-5: #04503c;
+  --sidebar: #08140e;
+  --sidebar-foreground: #edf2e4;
+  --sidebar-primary: #bef264;
+  --sidebar-primary-foreground: #050e0a;
+  --sidebar-accent: #173022;
+  --sidebar-accent-foreground: #edf2e4;
+  --sidebar-border: rgb(237 242 228 / 10%);
+  --sidebar-ring: #bef264;
 
-  --node-verified: oklch(0.9 0.18 125);
-  --node-known: oklch(0.85 0.09 165);
-  --node-progress: oklch(0.9 0.18 125);
-  --node-todo: oklch(0.55 0.03 160);
-  --node-locked: oklch(0.4 0.02 160);
+  --s0: #050e0a;
+  --s1: #0c1b14;
+  --s2: #12261b;
+  --s3: #183024;
+  --edge-hi: rgb(237 242 228 / 0.07);
+  --line: rgb(237 242 228 / 10%);
+  --shadow-s1: 0 1px 0 rgb(0 0 0 / 0.4), 0 18px 40px -24px rgb(0 0 0 / 0.8);
+  --shadow-s3: 0 28px 70px -24px rgb(0 0 0 / 0.9);
+
+  --glass-fill: rgb(237 242 228 / 0.06);
+  --glass-edge: rgb(237 242 228 / 0.16);
+  --glass-hi: rgb(237 242 228 / 0.18);
+
+  --kola-text: #f2a93b;
+  --glow: 0 10px 44px -10px rgb(190 242 100 / 0.38);
+
+  --node-verified: #bef264;
+  --node-known: #8fdcc0;
+  --node-progress: #bef264;
+  --node-todo: #6f8577;
+  --node-locked: #44574c;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-size: 1rem;
+    line-height: 1.55;
+    font-feature-settings: "ss01", "cv11";
   }
   h1,
   h2,
   h3,
   h4 {
     font-family: var(--font-heading);
+    font-weight: 800;
+    font-variation-settings: "wdth" 108;
+    letter-spacing: -0.02em;
+    line-height: 1.08;
+  }
+  :focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--volt);
+    color: var(--pitch);
   }
 }
 
-/* Brand helpers */
+/* ---------- Type roles ---------- */
+
+/* Hero headline: set wide and heavy. Width is the design move. */
+@utility display {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-variation-settings: "wdth" 128;
+  font-size: clamp(2.75rem, 8vw, 5.5rem);
+  letter-spacing: -0.035em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+/* Section title: narrower than the hero so the page has a rhythm. */
+@utility display-md {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-variation-settings: "wdth" 100;
+  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+@utility measure {
+  max-width: 68ch;
+}
+/* Real data only: hashes, ids, hours, scores. */
+@utility data {
+  font-family: var(--font-data);
+  font-size: 0.85em;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+/* Plain label. Sentence case, no tracking, no all-caps. */
+@utility tag-label {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.3;
+}
+
+/* ---------- Brand helpers ---------- */
 @utility bg-brand {
   background-image: var(--brand-gradient);
 }
@@ -173,15 +302,342 @@
   background-clip: text;
   color: transparent;
 }
+/* Restrained glow. Hero and primary CTAs only. */
 @utility glow {
   box-shadow: var(--glow);
 }
-/* Mono tag label, e.g. "RUNG 03" */
-@utility tag-label {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+
+/* ---------- Surface levels ---------- */
+@utility surface-0 {
+  background: var(--s0);
+}
+@utility surface-1 {
+  background: var(--s1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-surface);
+  box-shadow: inset 0 1px 0 var(--edge-hi), var(--shadow-s1);
+}
+@utility surface-2 {
+  background: var(--s2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-inner);
+  box-shadow: inset 0 1px 0 var(--edge-hi);
+}
+/* Menus, popovers, drawers. Opaque, never glass. */
+@utility surface-3 {
+  background: var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-surface);
+  box-shadow: inset 0 1px 0 var(--edge-hi), var(--shadow-s3);
+}
+
+/* Glass: floating nav, tour narrator card, credential. Nothing else. */
+@utility glass {
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  backdrop-filter: blur(22px) saturate(1.5);
+  border: 1px solid var(--glass-edge);
+  box-shadow:
+    inset 0 1px 0 var(--glass-hi),
+    0 24px 60px -24px rgb(0 0 0 / 0.55);
+}
+/* Credential: near-sharp, on a faint grid. */
+@utility credential {
+  border-radius: var(--r-seal);
+  background-image:
+    linear-gradient(var(--glass-fill), var(--glass-fill)),
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: auto, 24px 24px, 24px 24px;
+}
+@utility seal {
+  border-radius: 9999px;
+  border: 2px solid var(--kola);
+  color: var(--kola-text);
+  background: color-mix(in oklab, var(--kola) 14%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--kola) 18%, transparent);
+}
+
+/* ---------- Components ---------- */
+@layer components {
+  /* Buttons: pill controls */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0 1.5rem;
+    border: 1px solid transparent;
+    border-radius: var(--r-control);
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    transition:
+      transform 150ms var(--ease-out),
+      filter 150ms,
+      background-color 150ms,
+      border-color 150ms,
+      box-shadow 150ms;
+  }
+  .btn:active {
+    transform: scale(0.97);
+  }
+  .btn:disabled,
+  .btn[aria-disabled="true"] {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+  .btn svg {
+    width: 1.1em;
+    height: 1.1em;
+    flex-shrink: 0;
+  }
+  .btn-sm {
+    min-height: 2.25rem;
+    padding: 0 1rem;
+    font-size: 0.875rem;
+  }
+  .btn-primary {
+    background-image: var(--brand-gradient-text);
+    color: var(--pitch);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.4),
+      var(--glow);
+  }
+  .btn-primary:hover {
+    filter: brightness(1.07);
+    transform: translateY(-1px);
+  }
+  /* Glass secondary: tinted and edged, no blur (it sits on solid surfaces). */
+  .btn-glass {
+    background: var(--glass-fill);
+    border-color: var(--glass-edge);
+    color: var(--foreground);
+    box-shadow: inset 0 1px 0 var(--glass-hi);
+  }
+  .btn-glass:hover {
+    background: color-mix(in oklab, var(--glass-fill), var(--foreground) 7%);
+    border-color: color-mix(in oklab, var(--glass-edge), var(--foreground) 20%);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted-foreground);
+  }
+  .btn-ghost:hover {
+    background: color-mix(in oklab, var(--foreground) 7%, transparent);
+    color: var(--foreground);
+  }
+
+  /* Inputs: pill controls */
+  .field {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0 1.25rem;
+    border: 1px solid var(--input);
+    border-radius: var(--r-control);
+    background: var(--s2);
+    color: var(--foreground);
+    font-family: var(--font-body);
+    font-size: 1rem;
+    transition:
+      border-color 150ms,
+      box-shadow 150ms,
+      background-color 150ms;
+  }
+  textarea.field {
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--r-inner);
+    min-height: 6rem;
+    line-height: 1.5;
+  }
+  .field::placeholder {
+    color: color-mix(in oklab, var(--muted-foreground) 75%, transparent);
+  }
+  .field:hover {
+    border-color: color-mix(in oklab, var(--input), var(--foreground) 18%);
+  }
+  .field:focus-visible {
+    outline: none;
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 35%, transparent);
+  }
+  .field[aria-invalid="true"] {
+    border-color: var(--destructive);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--destructive) 25%, transparent);
+  }
+
+  /* Chips: selectable pills */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 2.25rem;
+    padding: 0 1rem;
+    border: 1px solid var(--input);
+    border-radius: var(--r-control);
+    background: transparent;
+    color: var(--foreground);
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      background-color 150ms,
+      border-color 150ms,
+      color 150ms;
+  }
+  .chip:hover {
+    border-color: color-mix(in oklab, var(--input), var(--foreground) 30%);
+  }
+  .chip[aria-pressed="true"],
+  .chip-on {
+    background: color-mix(in oklab, var(--primary) 18%, transparent);
+    border-color: var(--primary);
+    color: var(--foreground);
+  }
+
+  /* Badges: read-only status */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 1.5rem;
+    padding: 0 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-control);
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .badge svg {
+    width: 0.9em;
+    height: 0.9em;
+  }
+  .badge-verified {
+    background-image: var(--brand-gradient-text);
+    border-color: transparent;
+    color: var(--pitch);
+  }
+  .badge-known {
+    background: color-mix(in oklab, var(--node-known) 16%, transparent);
+    border-color: color-mix(in oklab, var(--node-known) 55%, transparent);
+    color: var(--node-known);
+  }
+  .badge-progress {
+    background: color-mix(in oklab, var(--node-progress) 14%, transparent);
+    border-color: var(--node-progress);
+    color: var(--node-progress);
+  }
+  .badge-todo {
+    color: var(--muted-foreground);
+    border-color: var(--input);
+  }
+  .badge-locked {
+    color: var(--muted-foreground);
+    border-color: var(--input);
+  }
+  .badge-needs-work {
+    background: color-mix(in oklab, var(--kola) 16%, transparent);
+    border-color: color-mix(in oklab, var(--kola) 60%, transparent);
+    color: var(--kola-text);
+  }
+
+  /* Road nodes. Verified is the only one that glows. */
+  .node {
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 9999px;
+    font-family: var(--font-heading);
+    font-weight: 800;
+    font-variation-settings: "wdth" 100;
+    font-size: 1rem;
+    border: 2px solid transparent;
+    transition:
+      transform 150ms var(--ease-out),
+      box-shadow 300ms;
+  }
+  .node svg {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+  .node-verified {
+    background-image: var(--brand-gradient);
+    color: var(--pitch);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.4),
+      0 0 24px -4px color-mix(in oklab, var(--volt) 55%, transparent);
+  }
+  .node-known {
+    background: color-mix(in oklab, var(--node-known) 15%, transparent);
+    border-color: var(--node-known);
+    color: var(--node-known);
+  }
+  .node-progress {
+    border-color: var(--node-progress);
+    color: var(--node-progress);
+    animation: node-ring 1.9s ease-in-out infinite;
+  }
+  .node-todo {
+    border-color: var(--node-todo);
+    color: var(--node-todo);
+  }
+  .node-locked {
+    border-color: var(--node-locked);
+    color: var(--node-locked);
+    opacity: 0.6;
+  }
+
+  /* Floating nav: the one piece of chrome that is glass. */
+  .nav-float {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: min(100% - 1.5rem, 46rem);
+    height: 3.25rem;
+    padding: 0 0.4rem;
+    border-radius: var(--r-control);
+  }
+  .nav-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.25rem;
+    padding: 0 1rem;
+    border-radius: var(--r-control);
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    transition:
+      background-color 150ms,
+      color 150ms;
+  }
+  .nav-link:hover {
+    color: var(--foreground);
+    background: color-mix(in oklab, var(--foreground) 8%, transparent);
+  }
+  .nav-link[aria-current="page"] {
+    color: var(--pitch);
+    background: var(--volt);
+  }
+}
+
+@keyframes node-ring {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--node-progress) 45%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 7px color-mix(in oklab, var(--node-progress) 0%, transparent);
+  }
 }
 
 /* Green skeleton shimmer */
@@ -197,22 +653,13 @@
   background-image: linear-gradient(
     90deg,
     var(--muted) 25%,
-    oklch(0.9 0.18 125 / 0.18) 50%,
+    color-mix(in oklab, var(--volt) 18%, transparent) 50%,
     var(--muted) 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.6s linear infinite;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  ::before,
-  ::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
 /* Light streak that runs along the travelled road */
 @keyframes road-run {
   0% {
@@ -233,4 +680,17 @@
 .road-run {
   stroke-dasharray: 0.07 3;
   animation: road-run 2.8s linear 2.4s infinite backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
