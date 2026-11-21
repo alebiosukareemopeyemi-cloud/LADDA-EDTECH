@@ -58,7 +58,7 @@ export function BuildingStep({ nodes, weeks, onDone, durationMs = 6500 }: Props)
         <div className="relative mt-8 aspect-[1100/760] overflow-hidden rounded-[1.25rem] border border-line bg-understory">
           <ContourBackdrop />
           <div className="absolute inset-0">
-            <RoadmapTrail nodes={nodes} />
+            <RoadmapTrail nodes={nodes} layout="wide" />
           </div>
         </div>
 

@@ -18,7 +18,7 @@ export default function StatusPage({
         <ContourBackdrop />
       </div>
       <header className="relative z-10 mx-auto flex h-[72px] max-w-5xl items-center px-4 md:px-10">
-        <Link href="/" className="font-display text-[1.75rem] font-bold leading-none">
+        <Link href="/" className="inline-flex min-h-11 items-center font-display text-[1.75rem] font-bold leading-none">
           Ladda
         </Link>
       </header>

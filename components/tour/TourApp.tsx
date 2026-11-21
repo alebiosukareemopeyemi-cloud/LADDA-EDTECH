@@ -219,7 +219,7 @@ export default function TourApp() {
         </p>
         <button
           type="button"
-          className="btn btn-ghost mt-1 !min-h-10 !px-4 !text-sm"
+          className="btn btn-ghost mt-1 !min-h-11 !px-4 !text-sm"
           disabled={!data}
           onClick={() => {
             setHours("96");
@@ -240,22 +240,22 @@ export default function TourApp() {
           <div className="flex items-center gap-1">
             {tour.open ? (
               <>
-                <button type="button" onClick={tour.togglePause} className="btn btn-ghost !min-h-10 !px-4 !text-sm">
+                <button type="button" onClick={tour.togglePause} className="btn btn-ghost !min-h-11 !px-4 !text-sm">
                   {tour.paused ? "Resume" : "Pause"}
                 </button>
-                <button type="button" onClick={tour.skip} className="btn btn-ghost !min-h-10 !px-4 !text-sm">
+                <button type="button" onClick={tour.skip} className="btn btn-ghost !min-h-11 !px-4 !text-sm">
                   Skip tour
                 </button>
-                <button type="button" onClick={tour.restart} className="btn btn-ghost hidden !min-h-10 !px-4 !text-sm sm:inline-flex">
+                <button type="button" onClick={tour.restart} className="btn btn-ghost hidden !min-h-11 !px-4 !text-sm sm:inline-flex">
                   Restart tour
                 </button>
               </>
             ) : (
               <>
-                <Link href="/" className="btn btn-ghost !min-h-10 !px-4 !text-sm">
+                <Link href="/" className="btn btn-ghost !min-h-11 !px-4 !text-sm">
                   Back to home
                 </Link>
-                <button ref={restartRef} type="button" onClick={tour.restart} className="btn btn-secondary !min-h-10 !px-4 !text-sm">
+                <button ref={restartRef} type="button" onClick={tour.restart} className="btn btn-secondary !min-h-11 !px-4 !text-sm">
                   Restart tour
                 </button>
               </>

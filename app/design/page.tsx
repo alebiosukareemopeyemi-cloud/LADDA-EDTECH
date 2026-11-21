@@ -68,7 +68,7 @@ export default function DesignPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl space-y-24 px-6 pb-32 pt-16">
+    <main className="mx-auto max-w-6xl space-y-24 overflow-x-clip px-6 pb-32 pt-16">
       {/* Hero */}
       <header>
         <h1 className="display max-w-3xl">Pick right. Learn real. Get hired.</h1>

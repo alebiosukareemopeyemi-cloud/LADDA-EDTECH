@@ -16,6 +16,8 @@ export default function GlobalError({ reset }: { error: Error & { digest?: strin
             <button type="button" className="btn btn-primary btn-lg" onClick={reset}>
               Try again
             </button>
+            {/* A full page load on purpose: the app itself failed, so client navigation cannot be trusted. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a href="/" className="btn btn-secondary btn-lg">
               Back to home
             </a>

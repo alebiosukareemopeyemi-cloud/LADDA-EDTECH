@@ -6,6 +6,7 @@ import type { NodeState } from "@/components/NodeMarker";
 import Trail from "@/components/Trail";
 import type { RoadmapNode } from "@/lib/contract";
 import { trailLayout } from "@/lib/roadmap/trail";
+import { useMediaQuery } from "@/lib/use-modal";
 
 // Contract status (plus the computed lock) to the marker shape.
 export function markerState(n: RoadmapNode): NodeState {
@@ -44,10 +45,14 @@ type Props = {
   /** Leave out for a picture only (the intake preview). */
   onSelect?: (node: RoadmapNode) => void;
   className?: string;
+  /** "auto" switches to a tall two-column layout on phones. Previews pass "wide". */
+  layout?: "auto" | "wide";
 };
 
-export default function RoadmapTrail({ nodes, selectedId = null, onSelect, className }: Props) {
-  const layout = useMemo(() => trailLayout(nodes.length), [nodes.length]);
+export default function RoadmapTrail({ nodes, selectedId = null, onSelect, className, layout: mode = "auto" }: Props) {
+  const phone = useMediaQuery("(max-width: 767px)");
+  const compact = mode === "auto" && phone;
+  const layout = useMemo(() => trailLayout(nodes.length, compact), [nodes.length, compact]);
 
   // The solid stretch runs to the furthest node that is done or under way.
   let reach = 0;

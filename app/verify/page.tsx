@@ -11,7 +11,7 @@ export default function VerifyIndexPage() {
   return (
     <div className="contour flex min-h-dvh flex-col">
       <header className="mx-auto flex h-[72px] w-full max-w-5xl items-center px-4 md:px-10">
-        <Link href="/" className="font-display text-[1.75rem] font-bold leading-none">
+        <Link href="/" className="inline-flex min-h-11 items-center font-display text-[1.75rem] font-bold leading-none">
           Ladda
         </Link>
       </header>

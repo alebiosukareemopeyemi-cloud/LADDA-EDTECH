@@ -121,7 +121,7 @@ export default function AppShell() {
                 <span className="h-0.5 w-3 rounded bg-text" />
               </span>
             </button>
-            <Link href="/dashboard" aria-label="Ladda home" className="rounded-full px-1">
+            <Link href="/dashboard" aria-label="Ladda home" className="inline-flex min-h-11 items-center rounded-full px-1">
               <Wordmark />
             </Link>
           </div>

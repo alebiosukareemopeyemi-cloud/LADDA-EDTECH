@@ -108,7 +108,7 @@ export default function DashboardPage() {
               <>
                 <ContourBackdrop />
                 <div className="absolute inset-0 p-1">
-                  <RoadmapTrail nodes={roadmap.nodes} />
+                  <RoadmapTrail nodes={roadmap.nodes} layout="wide" />
                 </div>
               </>
             )}
@@ -195,7 +195,7 @@ export default function DashboardPage() {
           <h2 id="opp-title" className="font-display text-3xl font-bold leading-none">
             Opportunities
           </h2>
-          <Link href="/opportunities" className="underline underline-offset-4">
+          <Link href="/opportunities" className="inline-flex min-h-11 items-center underline underline-offset-4">
             See all
           </Link>
         </div>
@@ -212,12 +212,17 @@ export default function DashboardPage() {
           {picks.map((o) => {
             const b = OPP[getStatus(o, now!)];
             return (
-              <li key={o.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-4">
-                <span className={`badge ${b.cls}`}>{b.label}</span>
-                <Link href={`/opportunities/${o.id}`} className="min-w-0 flex-1 font-semibold underline-offset-4 hover:underline">
+              <li key={o.id} className="py-3">
+                <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className={`badge ${b.cls}`}>{b.label}</span>
+                  <span className="text-sm text-text-mute">{o.dateLabel}</span>
+                </p>
+                <Link
+                  href={`/opportunities/${o.id}`}
+                  className="flex min-h-11 items-center font-semibold underline-offset-4 hover:underline"
+                >
                   {o.title}
                 </Link>
-                <span className="text-sm text-text-mute">{o.dateLabel}</span>
               </li>
             );
           })}

@@ -20,7 +20,6 @@ export default function CredentialStrip() {
             key={s.id}
             href={`/verify/${s.id}`}
             className="group block py-4 md:px-8"
-            aria-label={`${s.name}, Backend with Node.js, ${s.hours} verified hours`}
           >
             <span className="block text-base font-semibold group-hover:underline">{s.name}</span>
             <span className="block text-sm text-text-soft">Backend with Node.js</span>

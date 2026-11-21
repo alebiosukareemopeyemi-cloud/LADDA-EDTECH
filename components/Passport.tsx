@@ -96,7 +96,7 @@ export default function Passport({
       </motion.div>
 
       <div className="px-6 pb-8 pt-6 md:px-10 md:pb-10">
-        <p className="text-lg italic" style={{ ...serif, ...soft }}>
+        <p className="pr-24 text-lg italic md:pr-32" style={{ ...serif, ...soft }}>
           <span className="font-semibold not-italic" style={{ color: "var(--ink)" }}>
             Ladda
           </span>{" "}

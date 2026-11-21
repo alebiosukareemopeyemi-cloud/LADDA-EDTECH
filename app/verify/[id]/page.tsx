@@ -44,7 +44,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="contour flex min-h-dvh flex-col">
       <header className="mx-auto flex h-[72px] w-full max-w-6xl items-center justify-between px-4 md:px-10">
-        <Link href="/" className="font-display text-[1.75rem] font-bold leading-none">
+        <Link href="/" className="inline-flex min-h-11 items-center font-display text-[1.75rem] font-bold leading-none">
           Ladda
         </Link>
         <Link href="/verify" className="nav-link">
@@ -283,7 +283,7 @@ export default function VerifyPage() {
                       href={s.repoUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1 underline underline-offset-4"
+                      className="inline-flex min-h-11 items-center gap-1 underline underline-offset-4"
                     >
                       Open the repo <ExternalLink className="size-3.5" aria-hidden="true" />
                     </a>

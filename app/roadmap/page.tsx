@@ -122,7 +122,7 @@ export default function RoadmapPage() {
             )}
           </header>
           <div className="relative z-10 min-h-0 flex-1 px-2 pb-4 md:px-6">
-            <RoadmapTrail nodes={roadmap.nodes} selectedId={selected.id} onSelect={(n) => select(n.id)} className="size-full min-h-[360px]" />
+            <RoadmapTrail nodes={roadmap.nodes} selectedId={selected.id} onSelect={(n) => select(n.id)} className="h-auto w-full md:size-full md:min-h-[360px]" />
           </div>
         </section>
 
@@ -143,7 +143,7 @@ export default function RoadmapPage() {
           }`}
         >
           <div className="mb-3 flex justify-end lg:hidden">
-            <button type="button" className="btn btn-secondary !min-h-10 !px-4 !text-sm" onClick={() => setSheetOpen(false)}>
+            <button type="button" className="btn btn-secondary !min-h-11 !px-4 !text-sm" onClick={() => setSheetOpen(false)}>
               Close
             </button>
           </div>

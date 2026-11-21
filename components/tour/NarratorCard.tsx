@@ -107,10 +107,10 @@ export default function NarratorCard(p: Props) {
           Step {p.index + 1} of {p.total}
         </p>
         <div className="flex items-center gap-1">
-          <button type="button" onClick={p.onTogglePause} className="btn btn-ghost !min-h-10 !px-4 !text-sm">
+          <button type="button" onClick={p.onTogglePause} className="btn btn-ghost !min-h-11 !px-4 !text-sm">
             {p.paused ? "Resume" : "Pause"}
           </button>
-          <button type="button" onClick={p.onSkip} className="btn btn-ghost !min-h-10 !px-4 !text-sm">
+          <button type="button" onClick={p.onSkip} className="btn btn-ghost !min-h-11 !px-4 !text-sm">
             Skip tour
           </button>
         </div>
