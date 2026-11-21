@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Suspense, useMemo, useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
+import AuthShell from "@/components/auth/AuthShell";
 import { createClient } from "@/lib/supabase/client";
 
 type Tab = "signup" | "signin";
+type FieldName = "name" | "university" | "department" | "email" | "password";
 
 const DEPARTMENTS = [
   "Computer Science",
@@ -37,29 +39,20 @@ const UNIVERSITIES = [
   "Federal University of Technology, Owerri",
 ];
 
-const pillInput =
-  "w-full rounded-full border border-white/10 bg-white/[0.04] px-5 py-3 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-[#BEF264]/70 focus:bg-white/[0.07] focus:ring-4 focus:ring-[#BEF264]/10";
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+// A confirmation link that expired or was already used sends people back here with ?error=link.
+function LinkProblem() {
+  const params = useSearchParams();
+  if (params.get("error") !== "link") return null;
   return (
-    <label className="block">
-      <span className="tag-label mb-1.5 ml-2 block text-[10px] uppercase tracking-widest text-white/50">
-        {label}
-      </span>
-      {children}
-    </label>
+    <p role="alert" className="mt-5 border-l-2 border-ember pl-3 text-sm font-medium text-ember">
+      That confirmation link has expired or was already used. If you already confirmed, sign in. If not, create your
+      account again and we will send a new link.
+    </p>
   );
 }
 
-export default function AuthPage() {
+function AuthForm() {
   const router = useRouter();
-  const reduce = useReducedMotion();
   const supabase = useMemo(() => createClient(), []);
 
   const [tab, setTab] = useState<Tab>("signup");
@@ -71,36 +64,36 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [errorKey, setErrorKey] = useState(0);
+  const [problem, setProblem] = useState<{ message: string; field: FieldName | null } | null>(null);
 
-  const suggestions = UNIVERSITIES.filter((u) =>
-    u.toLowerCase().includes(university.trim().toLowerCase())
-  ).slice(0, 5);
+  const suggestions = UNIVERSITIES.filter((u) => u.toLowerCase().includes(university.trim().toLowerCase())).slice(0, 5);
 
-  function fail(msg: string) {
-    setError(msg);
-    setErrorKey((k) => k + 1);
+  function fail(message: string, field: FieldName | null = null) {
+    setProblem({ message, field });
     setLoading(false);
   }
+  const invalid = (f: FieldName) => problem?.field === f || undefined;
 
   function switchTab(next: Tab) {
     if (next === tab) return;
-    setError(null);
+    setProblem(null);
     setTab(next);
   }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    setError(null);
+    setProblem(null);
 
     if (tab === "signup") {
-      if (!name.trim()) return fail("Tell us your name first.");
-      if (!university.trim()) return fail("Add your university (or the one you're aiming for).");
-      if (!department) return fail("Pick your department.");
+      if (!name.trim()) return fail("Enter your name, for example Ada Obi.", "name");
+      if (!university.trim()) return fail("Enter your university. Start typing and pick it from the list, or type its full name.", "university");
+      if (!department) return fail("Choose your department from the list.", "department");
     }
-    if (!email.trim()) return fail("Enter your email.");
-    if (password.length < 8) return fail("Password needs at least 8 characters.");
+    if (!email.trim()) return fail("Enter your email, for example you@school.edu.ng.", "email");
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      return fail("That email does not look right. Check it for typos, for example you@school.edu.ng.", "email");
+    }
+    if (password.length < 8) return fail("Use at least 8 characters for your password. A short phrase works well.", "password");
 
     setLoading(true);
 
@@ -110,270 +103,209 @@ export default function AuthPage() {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: {
-            display_name: name.trim(),
-            university: university.trim(),
-            department,
-          },
+          data: { display_name: name.trim(), university: university.trim(), department },
         },
       });
-      if (err) return fail(err.message);
+      if (err) return fail(`${err.message}. Check your details and try again.`);
       if (data.user && data.user.identities?.length === 0) {
-        return fail("That email already has an account. Try signing in.");
+        setTab("signin");
+        return fail("That email already has an account. Sign in with your password instead.", "email");
       }
       router.push(`/auth/verify-email?email=${encodeURIComponent(email.trim())}`);
       return;
     }
 
-    const { error: err } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+    const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     if (err) {
       if (err.message.toLowerCase().includes("not confirmed")) {
         router.push(`/auth/verify-email?email=${encodeURIComponent(email.trim())}`);
         return;
       }
-      return fail("Wrong email or password.");
+      return fail("That email and password do not match. Check both, or create an account if you are new.", "password");
     }
     router.push("/roadmap");
     router.refresh();
   }
 
   return (
-    <main className="relative grid min-h-dvh place-items-center px-4 py-10">
-      {/* Drifting green glow */}
-      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#070A08]">
-        <motion.div
-          className="absolute -left-40 top-20 size-[520px] rounded-full bg-[#BEF264]/10 blur-3xl"
-          animate={reduce ? undefined : { x: [0, 80, 0], y: [0, 50, 0] }}
-          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute -right-32 bottom-0 size-[560px] rounded-full bg-[#047857]/25 blur-3xl"
-          animate={reduce ? undefined : { x: [0, -70, 0], y: [0, -60, 0] }}
-          transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
-        />
+    <>
+      <h1 className="display-md mt-6">{tab === "signup" ? "Create your account" : "Sign in"}</h1>
+      <p className="mt-2 text-text-soft">Pick right. Learn real. Get hired.</p>
+
+      <Suspense fallback={null}>
+        <LinkProblem />
+      </Suspense>
+
+      <div role="group" aria-label="Sign up or sign in" className="mt-6 flex gap-2">
+        {(["signup", "signin"] as Tab[]).map((t) => (
+          <button key={t} type="button" className="chip" aria-pressed={tab === t} onClick={() => switchTab(t)}>
+            {t === "signup" ? "Sign up" : "Sign in"}
+          </button>
+        ))}
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 24, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="relative w-full max-w-md"
-      >
-        {/* Glow behind the card */}
-        <div className="absolute inset-0 -z-10 rounded-[28px] bg-gradient-to-br from-[#047857] to-[#BEF264] opacity-30 blur-2xl" />
-
-        {/* Gradient border */}
-        <motion.div
-          layout
-          style={{ borderRadius: 28 }}
-          className="bg-gradient-to-br from-[#047857] via-[#047857]/40 to-[#BEF264] p-px"
-        >
-          <motion.div
-            layout
-            style={{ borderRadius: 27 }}
-            className="bg-[#0a0f0b] px-6 py-8 sm:px-8"
-          >
-            {/* Wordmark */}
-            <div className="mb-6 text-center">
-              <h1 className="bg-gradient-to-r from-[#047857] to-[#BEF264] bg-clip-text text-4xl font-extrabold tracking-tight text-transparent">
-                Ladda
-              </h1>
-              <p className="tag-label mt-2 text-[11px] uppercase tracking-widest text-white/50">
-                Pick right. Learn real. Get hired.
-              </p>
+      <form onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
+        {tab === "signup" && (
+          <>
+            <div>
+              <label htmlFor="name" className="mb-1.5 block text-sm font-medium">
+                Name
+              </label>
+              <input
+                id="name"
+                className="field"
+                placeholder="Ada Obi"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoComplete="name"
+                aria-invalid={invalid("name")}
+                aria-describedby={problem?.field === "name" ? "form-problem" : undefined}
+              />
             </div>
 
-            {/* Tabs */}
-            <div className="relative mb-6 grid grid-cols-2 rounded-full border border-white/10 bg-white/[0.03] p-1">
-              {(["signup", "signin"] as Tab[]).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => switchTab(t)}
-                  className="relative z-10 rounded-full py-2 text-sm font-semibold transition-colors"
-                  style={{ color: tab === t ? "#070A08" : "rgba(255,255,255,0.6)" }}
-                >
-                  {tab === t && (
-                    <motion.span
-                      layoutId="auth-tab-pill"
-                      className="absolute inset-0 -z-10 rounded-full bg-gradient-to-r from-[#047857] to-[#BEF264]"
-                      transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                    />
-                  )}
-                  {t === "signup" ? "Sign up" : "Sign in"}
-                </button>
-              ))}
-            </div>
-
-            <form onSubmit={onSubmit} noValidate>
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={tab}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className="space-y-4"
-                >
-                  {tab === "signup" && (
-                    <>
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <Field label="Name">
-                          <input
-                            className={pillInput}
-                            placeholder="Ada Obi"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            autoComplete="name"
-                          />
-                        </Field>
-
-                        <Field label="University">
-                          <div className="relative">
-                            <input
-                              className={pillInput}
-                              placeholder="Start typing"
-                              value={university}
-                              onChange={(e) => {
-                                setUniversity(e.target.value);
-                                setUniOpen(true);
-                              }}
-                              onFocus={() => setUniOpen(true)}
-                              onBlur={() => setTimeout(() => setUniOpen(false), 120)}
-                              autoComplete="off"
-                            />
-                            <AnimatePresence>
-                              {uniOpen && suggestions.length > 0 && (
-                                <motion.ul
-                                  initial={{ opacity: 0, y: -4 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  exit={{ opacity: 0 }}
-                                  transition={{ duration: 0.15 }}
-                                  className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-3xl border border-white/10 bg-[#0d130e] p-1 shadow-xl"
-                                >
-                                  {suggestions.map((u) => (
-                                    <li key={u}>
-                                      <button
-                                        type="button"
-                                        onMouseDown={(e) => {
-                                          e.preventDefault();
-                                          setUniversity(u);
-                                          setUniOpen(false);
-                                        }}
-                                        className="w-full rounded-full px-4 py-2 text-left text-sm text-white/80 transition hover:bg-[#BEF264]/10 hover:text-[#BEF264]"
-                                      >
-                                        {u}
-                                      </button>
-                                    </li>
-                                  ))}
-                                </motion.ul>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        </Field>
-                      </div>
-
-                      <Field label="Department">
-                        <select
-                          className={`${pillInput} appearance-none`}
-                          value={department}
-                          onChange={(e) => setDepartment(e.target.value)}
-                        >
-                          <option value="" className="bg-[#0a0f0b]">
-                            Choose one
-                          </option>
-                          {DEPARTMENTS.map((d) => (
-                            <option key={d} value={d} className="bg-[#0a0f0b]">
-                              {d}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                    </>
-                  )}
-
-                  <Field label="Email">
-                    <input
-                      type="email"
-                      className={pillInput}
-                      placeholder="you@school.edu.ng"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      autoComplete="email"
-                    />
-                  </Field>
-
-                  <Field label="Password">
-                    <div className="relative">
-                      <input
-                        type={showPw ? "text" : "password"}
-                        className={`${pillInput} pr-12`}
-                        placeholder="At least 8 characters"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        autoComplete={tab === "signup" ? "new-password" : "current-password"}
-                      />
+            <div className="relative">
+              <label htmlFor="university" className="mb-1.5 block text-sm font-medium">
+                University
+              </label>
+              <input
+                id="university"
+                className="field"
+                placeholder="Start typing, then pick yours"
+                value={university}
+                onChange={(e) => {
+                  setUniversity(e.target.value);
+                  setUniOpen(true);
+                }}
+                onFocus={() => setUniOpen(true)}
+                onBlur={() => setTimeout(() => setUniOpen(false), 120)}
+                onKeyDown={(e) => e.key === "Escape" && setUniOpen(false)}
+                autoComplete="off"
+                role="combobox"
+                aria-expanded={uniOpen && suggestions.length > 0}
+                aria-controls="uni-list"
+                aria-autocomplete="list"
+                aria-invalid={invalid("university")}
+                aria-describedby={problem?.field === "university" ? "form-problem" : undefined}
+              />
+              {uniOpen && suggestions.length > 0 && (
+                <ul id="uni-list" role="listbox" aria-label="Universities" className="surface-raised absolute inset-x-0 top-full z-20 mt-2 p-1">
+                  {suggestions.map((u) => (
+                    <li key={u} role="option" aria-selected={u === university}>
                       <button
                         type="button"
-                        onClick={() => setShowPw((s) => !s)}
-                        aria-label={showPw ? "Hide password" : "Show password"}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-white/50 transition hover:text-[#BEF264]"
+                        tabIndex={-1}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setUniversity(u);
+                          setUniOpen(false);
+                        }}
+                        className="min-h-11 w-full rounded-full px-4 text-left hover:bg-line"
                       >
-                        {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                        {u}
                       </button>
-                    </div>
-                  </Field>
-                </motion.div>
-              </AnimatePresence>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
 
-              {/* Error pill */}
-              <AnimatePresence>
-                {error && (
-                  <motion.p
-                    key={errorKey}
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={
-                      reduce
-                        ? { opacity: 1, y: 0 }
-                        : { opacity: 1, y: 0, x: [0, -6, 6, -4, 4, 0] }
-                    }
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.4 }}
-                    role="alert"
-                    className="mt-5 rounded-full border border-[#BEF264]/30 bg-[#BEF264]/10 px-4 py-2.5 text-center text-sm text-[#d9f99d]"
-                  >
-                    {error}
-                  </motion.p>
-                )}
-              </AnimatePresence>
-
-              <motion.button
-                type="submit"
-                disabled={loading}
-                whileHover={reduce || loading ? undefined : { y: -2 }}
-                whileTap={reduce || loading ? undefined : { scale: 0.97 }}
-                className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#047857] to-[#BEF264] px-6 py-3.5 text-sm font-bold text-[#070A08] shadow-[0_0_32px_-6px_rgba(190,242,100,0.55)] transition disabled:opacity-70"
+            <div>
+              <label htmlFor="department" className="mb-1.5 block text-sm font-medium">
+                Department
+              </label>
+              <select
+                id="department"
+                className="field"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                aria-invalid={invalid("department")}
+                aria-describedby={problem?.field === "department" ? "form-problem" : undefined}
               >
-                {loading && <Loader2 size={16} className="animate-spin" />}
-                {loading
-                  ? tab === "signup"
-                    ? "Creating your account"
-                    : "Signing you in"
-                  : tab === "signup"
-                    ? "Create my account"
-                    : "Sign in"}
-              </motion.button>
-            </form>
+                <option value="">Choose one</option>
+                {DEPARTMENTS.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
 
-            <p className="tag-label mt-5 text-center text-[10px] uppercase tracking-widest text-white/35">
-              Email and password only. Employers verify without an account.
-            </p>
-          </motion.div>
-        </motion.div>
-      </motion.div>
-    </main>
+        <div>
+          <label htmlFor="email" className="mb-1.5 block text-sm font-medium">
+            Email
+          </label>
+          <input
+            id="email"
+            type="email"
+            className="field"
+            placeholder="you@school.edu.ng"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            aria-invalid={invalid("email")}
+            aria-describedby={problem?.field === "email" ? "form-problem" : undefined}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="password" className="mb-1.5 block text-sm font-medium">
+            Password
+          </label>
+          <div className="relative">
+            <input
+              id="password"
+              type={showPw ? "text" : "password"}
+              className="field pr-14"
+              placeholder="At least 8 characters"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete={tab === "signup" ? "new-password" : "current-password"}
+              aria-invalid={invalid("password")}
+              aria-describedby={problem?.field === "password" ? "form-problem" : undefined}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPw((s) => !s)}
+              aria-label={showPw ? "Hide password" : "Show password"}
+              aria-pressed={showPw}
+              className="absolute right-1 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full text-text-soft hover:text-text"
+            >
+              {showPw ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+            </button>
+          </div>
+        </div>
+
+        {problem && (
+          <p id="form-problem" role="alert" className="border-l-2 border-ember pl-3 text-sm font-medium text-ember">
+            {problem.message}
+          </p>
+        )}
+
+        <button type="submit" disabled={loading} className="btn btn-primary btn-lg w-full">
+          {loading
+            ? tab === "signup"
+              ? "Creating your account"
+              : "Signing you in"
+            : tab === "signup"
+              ? "Create my account"
+              : "Sign in"}
+        </button>
+      </form>
+
+      <p className="mt-5 text-center text-sm text-text-mute">Email and password only. Employers verify without an account.</p>
+      <Link href="/tour" className="btn btn-ghost mt-2 w-full">
+        Watch the tour instead
+      </Link>
+    </>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <AuthShell>
+      <AuthForm />
+    </AuthShell>
   );
 }
