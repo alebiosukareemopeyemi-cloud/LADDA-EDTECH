@@ -34,6 +34,14 @@ function write(s: Store) {
 export const localVerifiedIds = () => Object.keys(read().verified);
 export const localReviews = () => read().verified;
 
+// The most recent approved review kept in this browser, or null.
+export function latestLocalReview(): { nodeId: string; review: LocalReview } | null {
+  const entries = Object.entries(read().verified);
+  if (entries.length === 0) return null;
+  entries.sort((a, b) => b[1].at.localeCompare(a[1].at));
+  return { nodeId: entries[0][0], review: entries[0][1] };
+}
+
 export function markLocalVerified(nodeId: string, review: LocalReview) {
   const s = read();
   s.verified[nodeId] = review;

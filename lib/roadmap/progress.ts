@@ -45,6 +45,24 @@ export function isTrackComplete(roadmap: Roadmap): boolean {
   return required.length > 0 && required.every((n) => n.status === "verified");
 }
 
+// "38h of 96": hours on verified required skills, out of all required hours.
+export function hoursSummary(nodes: RoadmapNode[]): { done: number; total: number } {
+  const required = nodes.filter((n) => !n.isStretch);
+  return {
+    done: required.filter((n) => n.status === "verified").reduce((t, n) => t + n.hours, 0),
+    total: required.reduce((t, n) => t + n.hours, 0),
+  };
+}
+
+// The skill to work on now: the one in progress, else the first open one that is not done.
+export function pickNext(nodes: RoadmapNode[]): RoadmapNode | null {
+  return (
+    nodes.find((n) => n.status === "in_progress") ??
+    nodes.find((n) => !n.locked && n.status !== "verified" && n.status !== "known") ??
+    null
+  );
+}
+
 // Skills that were locked before and are open now.
 export function newlyUnlocked(before: Roadmap, after: Roadmap): RoadmapNode[] {
   const wasLocked = new Set(before.nodes.filter((n) => n.locked).map((n) => n.id));

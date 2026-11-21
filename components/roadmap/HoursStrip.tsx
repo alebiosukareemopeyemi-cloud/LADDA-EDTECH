@@ -1,11 +1,11 @@
 import type { RoadmapNode } from "@/lib/contract";
+import { hoursSummary } from "@/lib/roadmap/progress";
 
 // "38h of 96 verified hours" as a stepped profile line: one step per required
 // skill. A verified step is solid volt, the rest are dotted.
 export default function HoursStrip({ nodes }: { nodes: RoadmapNode[] }) {
   const required = nodes.filter((n) => !n.isStretch);
-  const total = required.reduce((t, n) => t + n.hours, 0);
-  const done = required.filter((n) => n.status === "verified").reduce((t, n) => t + n.hours, 0);
+  const { done, total } = hoursSummary(nodes);
 
   const W = 1000;
   const H = 56;
