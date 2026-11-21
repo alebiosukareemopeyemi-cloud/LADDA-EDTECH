@@ -2,351 +2,289 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, Lock, Wrench } from "lucide-react";
-import RevealText from "@/components/ui/RevealText";
-import SparkBurst from "@/components/ui/SparkBurst";
-import {
-  unlockChain,
-  unlockStep,
-  useCountUp,
-  useMagnetic,
-  useTilt,
-} from "@/lib/motion";
-
-type NodeState = "verified" | "known" | "progress" | "todo" | "locked";
+import { Check, Lock, Wrench, X } from "lucide-react";
+import NodeMarker, { type NodeState } from "@/components/NodeMarker";
+import Trail from "@/components/Trail";
+import { NODE_SHAPES } from "@/lib/node-shapes";
+import { sealStamp, unlockChain, unlockStep, usePlayProps } from "@/lib/motion";
 
 const palette = [
-  { name: "Pitch", hex: "#050E0A", use: "Page background" },
-  { name: "Canopy", hex: "#0C1B14", use: "Raised surfaces" },
-  { name: "Moss", hex: "#047857", use: "Gradient start, verified edges" },
-  { name: "Volt", hex: "#BEF264", use: "Gradient end, primary action, focus" },
-  { name: "Kola", hex: "#F2A93B", use: "Needs work, credential seal" },
-  { name: "Bone", hex: "#EDF2E4", use: "Text" },
+  { name: "night", hex: "#050B08", use: "Page" },
+  { name: "understory", hex: "#0B1812", use: "Surfaces" },
+  { name: "line", hex: "#16301F", use: "Hairlines" },
+  { name: "line-strong", hex: "#2B4A39", use: "Raised edges" },
+  { name: "moss", hex: "#047857", use: "Gradient start" },
+  { name: "volt", hex: "#BEF264", use: "Verified, primary, focus" },
+  { name: "lake", hex: "#7FD8C4", use: "Known" },
+  { name: "kola", hex: "#F2A93B", use: "Seal, needs work" },
+  { name: "ember", hex: "#FF6B57", use: "Invalid, error" },
+  { name: "paper", hex: "#E9EDDF", use: "Credential only" },
+  { name: "text", hex: "#EDF2E4", use: "Text" },
+  { name: "text-soft", hex: "#C9D6CC", use: "Secondary text" },
+  { name: "text-mute", hex: "#A7B8AB", use: "Hints" },
+  { name: "node-mute", hex: "#6E8A7A", use: "Todo, locked, input edges" },
 ];
 
-const nodeKinds: { state: NodeState; label: string; note: string }[] = [
-  { state: "verified", label: "Verified", note: "Project approved" },
-  { state: "known", label: "Known", note: "Matched from your CV" },
-  { state: "progress", label: "In progress", note: "You are here" },
-  { state: "todo", label: "Not started", note: "Ready when you are" },
-  { state: "locked", label: "Locked", note: "Finish the step before" },
+const states: { state: NodeState; label: string }[] = [
+  { state: "verified", label: "Git and GitHub" },
+  { state: "known", label: "HTTP basics" },
+  { state: "in_progress", label: "SQL and Postgres" },
+  { state: "todo", label: "Build an API" },
+  { state: "locked", label: "Auth and security" },
 ];
 
-function Node({ state, n }: { state: NodeState; n?: number }) {
-  return (
-    <span className={`node node-${state}`}>
-      {state === "locked" ? <Lock aria-label="Locked" /> : state === "verified" ? <Check aria-label="Verified" /> : n}
-    </span>
-  );
-}
+// One winding route. Waypoints sit along it.
+const ROUTE = "M70 230 C 190 230, 220 90, 360 90 S 540 240, 650 200 S 790 90, 840 90";
+const stops: { x: number; y: number; state: NodeState; label: string; percent?: number }[] = [
+  { x: 70, y: 230, state: "verified", label: "JS and TS" },
+  { x: 360, y: 90, state: "known", label: "Git" },
+  { x: 650, y: 200, state: "in_progress", label: "SQL", percent: 60 },
+  { x: 840, y: 90, state: "locked", label: "Deploy" },
+];
+const M = 104; // marker render size inside the trail svg
 
-function MagneticButton({ children }: { children: React.ReactNode }) {
-  const magnet = useMagnetic(0.3);
+function Section({ title, note, children, id }: { title: string; note?: string; children: React.ReactNode; id?: string }) {
   return (
-    <motion.button className="btn btn-primary" {...magnet}>
+    <section id={id} className="space-y-6">
+      <div>
+        <h2 className="display-md">{title}</h2>
+        {note && <p className="measure mt-3 text-text-mute">{note}</p>}
+      </div>
       {children}
-    </motion.button>
-  );
-}
-
-function Heading({ children, note }: { children: string; note?: string }) {
-  return (
-    <div className="mb-8">
-      <h2 className="display-md">{children}</h2>
-      {note && <p className="measure mt-3 text-muted-foreground">{note}</p>}
-    </div>
+    </section>
   );
 }
 
 export default function DesignPage() {
-  const [light, setLight] = useState(false);
   const [chips, setChips] = useState<string[]>(["10 hours"]);
-  const [unlock, setUnlock] = useState(0);
-  const [spark, setSpark] = useState(0);
-  const [counting, setCounting] = useState(false);
-  const tilt = useTilt(9);
-  const hours = useCountUp(96, { start: counting });
+  const [percent, setPercent] = useState(60);
+  const [selected, setSelected] = useState(false);
+  const [grey, setGrey] = useState(false);
+  const [run, setRun] = useState(0);
+  const play = usePlayProps();
 
-  function toggleTheme() {
-    document.documentElement.classList.toggle("dark");
-    setLight((v) => !v);
-  }
   function toggleChip(c: string) {
     setChips((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
   }
 
   return (
-    <main className="mx-auto max-w-6xl space-y-28 px-6 pb-32 pt-24">
-      {/* Floating glass nav (glass surface 1 of 3) */}
-      <div className="pointer-events-none fixed inset-x-0 top-2 z-40 flex justify-center">
-        <nav aria-label="Design page" className="nav-float glass">
-          <span className="px-4 font-heading text-lg font-extrabold">Ladda</span>
-          <div className="flex items-center gap-1">
-            <a className="nav-link" href="#type">Type</a>
-            <a className="nav-link" href="#controls">Controls</a>
-            <a className="nav-link" href="#nodes">Nodes</a>
-            <a className="nav-link" href="#glass">Glass</a>
-          </div>
-          <button onClick={toggleTheme} className="btn btn-ghost btn-sm">
-            {light ? "Dark mode" : "Light mode"}
-          </button>
-        </nav>
-      </div>
-
-      {/* Hero: the headline is the shape */}
-      <section className="relative">
-        <RevealText as="h1" className="display max-w-4xl" text="Pick right. Learn real. Get hired." />
-        <p className="measure mt-8 text-lg text-muted-foreground">
-          Build backend projects that get checked. Earn a signed credential an employer can verify
-          in seconds, with no account.
+    <main className="mx-auto max-w-6xl space-y-24 px-6 pb-32 pt-16">
+      {/* Hero */}
+      <header>
+        <h1 className="display max-w-3xl">Pick right. Learn real. Get hired.</h1>
+        <p className="measure mt-8 text-lg text-text-soft">
+          Walk a trail of backend skills, plant a flag on each one, and finish with a signed credential
+          an employer can check without an account.
         </p>
-        <div className="mt-10 flex flex-wrap items-center gap-3">
-          <MagneticButton>Start free</MagneticButton>
-          <button className="btn btn-glass">Sign in</button>
-          <button className="btn btn-ghost">Check a credential</button>
+        <div className="mt-10 flex flex-wrap gap-3">
+          <button className="btn btn-primary btn-lg">Start free</button>
+          <button className="btn btn-secondary btn-lg">Sign in</button>
+          <button className="btn btn-ghost btn-lg">Check a credential</button>
         </div>
-      </section>
+      </header>
 
-      {/* Palette: one dominant swatch, the rest in a row */}
-      <section>
-        <Heading note="Six names. The gradient is Moss to Volt and appears only on verified, primary actions and the seal ring.">
-          Colour
-        </Heading>
-        <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-          <div className="relative min-h-56 overflow-hidden rounded-surface bg-brand p-6 text-pitch">
-            <p className="font-heading text-3xl font-extrabold">Moss to Volt</p>
-            <p className="data mt-2">#047857 to #BEF264</p>
+      {/* Trail on contour lines */}
+      <Section
+        title="The trail"
+        note="Dotted route, finished stretch in solid volt with a soft glow. It draws itself once. Waypoints are markers, not numbers."
+      >
+        <div className="contour overflow-hidden rounded-[1.25rem] border border-line p-2">
+          <div className="mb-1 flex justify-end">
+            <button className="btn btn-secondary" onClick={() => setRun((r) => r + 1)}>
+              Draw the trail again
+            </button>
           </div>
-          <div className="surface-1 flex flex-col justify-between p-6">
-            <p className="text-muted-foreground">Kola only means a person looked.</p>
-            <div className="flex items-center gap-4">
-              <span className="seal grid size-16 place-items-center font-heading text-xl font-extrabold">
-                L
-              </span>
-              <span className="badge badge-needs-work">
-                <Wrench /> Needs work
-              </span>
-            </div>
-          </div>
+          <svg key={run} viewBox="0 0 910 330" className="w-full" role="group" aria-label="Sample trail">
+            <Trail d={ROUTE} progress={0.55} />
+            {stops.map((s) => (
+              <g key={s.label} transform={`translate(${s.x - M / 2} ${s.y - (M * 100) / 240})`}>
+                <NodeMarker state={s.state} percent={s.percent} label={s.label} size={M} />
+              </g>
+            ))}
+          </svg>
         </div>
-        <ul className="mt-4 flex flex-wrap gap-x-8 gap-y-4">
-          {palette.map((c) => (
-            <li key={c.name} className="flex items-center gap-3">
-              <span
-                className="size-9 rounded-inner border border-border"
-                style={{ background: c.hex }}
-                aria-hidden="true"
+      </Section>
+
+      {/* Node markers */}
+      <Section
+        title="Waypoints"
+        note="Shape carries the meaning and colour only backs it up. Switch to greyscale to check: every state is still different."
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <button className="chip" aria-pressed={grey} onClick={() => setGrey((g) => !g)}>
+            Greyscale
+          </button>
+          <button className="chip" aria-pressed={selected} onClick={() => setSelected((s) => !s)}>
+            Selected
+          </button>
+          <label className="flex items-center gap-3 text-sm text-text-soft">
+            In progress
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={percent}
+              onChange={(e) => setPercent(Number(e.target.value))}
+              aria-label="In progress percent"
+              className="accent-[#BEF264]"
+            />
+            <span className="data w-10">{percent}%</span>
+          </label>
+        </div>
+        <div className={`surface flex flex-wrap items-start justify-between gap-4 p-6 ${grey ? "grayscale" : ""}`}>
+          {states.map((s) => (
+            <div key={s.state} className="flex flex-col items-center">
+              <NodeMarker
+                state={s.state}
+                label={s.label}
+                percent={percent}
+                selected={selected && s.state === "in_progress"}
+                size={150}
               />
-              <span>
-                <span className="block font-medium leading-tight">{c.name}</span>
-                <span className="data text-muted-foreground">{c.hex}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* Surfaces: nested to show the steps */}
-      <section>
-        <Heading note="Depth comes from surface level. Each step is lighter and has a crisper top edge. Menus are opaque, never glass.">
-          Surfaces
-        </Heading>
-        <div className="surface-0 rounded-surface border border-border p-5">
-          <p className="mb-3 text-sm text-muted-foreground">Page</p>
-          <div className="surface-1 p-5">
-            <p className="mb-3 text-sm text-muted-foreground">Panel</p>
-            <div className="flex flex-wrap gap-3">
-              <div className="surface-2 px-5 py-4">Inner block</div>
-              <div className="surface-3 px-6 py-4">Menu or popover</div>
+              <p className="-mt-6 text-sm text-text-mute">{NODE_SHAPES[s.state].text}</p>
             </div>
-          </div>
+          ))}
         </div>
-      </section>
 
-      {/* Type */}
-      <section id="type">
-        <Heading note="Anybody for headlines, set wide for the hero and narrower for sections. Onest for everything you read. System mono for data only.">
-          Type
-        </Heading>
-        <div className="grid gap-10 lg:grid-cols-[1.2fr_1fr]">
-          <div className="space-y-6">
-            <p className="display">Verified, not claimed.</p>
-            <p className="display-md">Projects a reviewer actually ran</p>
-            <p className="font-heading text-2xl font-bold">Card title in display, width 108</p>
-          </div>
-          <div className="space-y-4">
-            <p className="measure">
-              Onest body at 1rem, line height 1.55, capped at 68 characters so lines never run past
-              eighty. Sentence case, no tracked capitals.
-            </p>
-            <p className="text-muted-foreground">Muted text for secondary lines.</p>
-            <p className="tag-label text-muted-foreground">Label: plain, sentence case</p>
-            <p>
-              Real data only: <span className="data">a91f3c07</span>, <span className="data">demo-001</span>,{" "}
-              <span className="data">96h</span>
-            </p>
-          </div>
+        <div className="flex flex-wrap gap-2">
+          <span className="badge badge-verified"><Check /> Verified</span>
+          <span className="badge badge-known">Known</span>
+          <span className="badge badge-progress">In progress</span>
+          <span className="badge badge-todo">Not started</span>
+          <span className="badge badge-locked"><Lock /> Locked</span>
+          <span className="badge badge-needs-work"><Wrench /> Needs work</span>
+          <span className="badge badge-invalid"><X /> Invalid</span>
         </div>
-      </section>
+      </Section>
+
+      {/* Unlock chain */}
+      <Section title="Unlock chain" note="Finish a skill and the next waypoints light up one after another.">
+        <div className="surface p-6">
+          <button className="btn btn-secondary mb-4" onClick={() => setRun((r) => r + 1)}>
+            Play unlock
+          </button>
+          <motion.div
+            key={`u${run}`}
+            variants={unlockChain(0.35, 0.2)}
+            initial={play.initial}
+            animate="show"
+            className="flex items-start justify-around"
+          >
+            {states.slice(0, 4).map((s, i) => (
+              <motion.div key={s.label} variants={unlockStep}>
+                <NodeMarker
+                  state={i === 0 ? "verified" : i === 3 ? "todo" : "known"}
+                  label={s.label}
+                  size={130}
+                />
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </Section>
+
+      {/* Type and colour */}
+      <Section title="Type and colour" id="type">
+        <div className="grid gap-10 lg:grid-cols-[1.2fr_1fr]">
+          <div className="space-y-5">
+            <p className="display">Verified, not claimed.</p>
+            <p className="waypoint-name">Waypoint name: Barlow Condensed 600, 22px</p>
+            <p className="measure text-text-soft">
+              Barlow for all app text at 17px, line height 1.6, capped at 65 characters a line. Sentence
+              case everywhere. The serif face appears on the credential and nowhere else.
+            </p>
+            <p>
+              Data only: <span className="data">a91f3c07</span>, <span className="data">demo-001</span>
+            </p>
+          </div>
+          <ul className="grid grid-cols-2 gap-x-6 gap-y-3 self-start">
+            {palette.map((c) => (
+              <li key={c.name} className="flex items-center gap-3">
+                <span className="size-8 shrink-0 rounded-full border border-line-strong" style={{ background: c.hex }} aria-hidden="true" />
+                <span className="leading-tight">
+                  <span className="block text-sm font-medium">{c.name}</span>
+                  <span className="data text-text-mute">{c.hex}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </Section>
 
       {/* Controls */}
-      <section id="controls">
-        <Heading note="Pills for controls. Large radius for main surfaces. Small for inner elements. Near-sharp for the credential.">
-          Controls
-        </Heading>
+      <Section title="Controls" id="controls">
         <div className="grid gap-12 lg:grid-cols-2">
-          <div className="space-y-8">
-            <div className="flex flex-wrap items-center gap-3">
-              <button className="btn btn-primary">Start free</button>
-              <button className="btn btn-glass">Sign in</button>
-              <button className="btn btn-ghost">Maybe later</button>
-              <button className="btn btn-glass" disabled>
-                Disabled
-              </button>
-              <button className="btn btn-primary btn-sm">Submit project</button>
-            </div>
-            <div className="space-y-3">
-              <label htmlFor="d-email" className="text-sm font-medium">
-                Email address
-              </label>
-              <input id="d-email" className="field" type="email" placeholder="you@university.edu.ng" />
-              <input className="field" aria-label="Invalid example" aria-invalid="true" defaultValue="not-an-email" />
-              <p className="text-sm text-destructive">Enter an email like name@school.edu.ng.</p>
-              <textarea className="field" aria-label="Project notes" placeholder="What did you build, and how can a reviewer run it?" />
-            </div>
+          <div className="space-y-3">
+            <label htmlFor="d-email" className="text-sm font-medium">
+              Email address
+            </label>
+            <input id="d-email" className="field" type="email" placeholder="you@university.edu.ng" />
+            <input className="field" aria-label="Invalid example" aria-invalid="true" defaultValue="not-an-email" />
+            <p className="text-sm text-ember">Enter an email like name@school.edu.ng.</p>
+            <textarea className="field" aria-label="Project notes" placeholder="What did you build, and how can a reviewer run it?" />
           </div>
-          <div className="space-y-8">
+          <div className="space-y-6">
             <div>
               <p className="mb-3 text-sm font-medium">How many hours a week can you give?</p>
               <div className="flex flex-wrap gap-2" role="group" aria-label="Hours per week">
                 {["5 hours", "10 hours", "15 hours", "20+ hours"].map((c) => (
-                  <button
-                    key={c}
-                    className="chip"
-                    aria-pressed={chips.includes(c)}
-                    onClick={() => toggleChip(c)}
-                  >
+                  <button key={c} className="chip" aria-pressed={chips.includes(c)} onClick={() => toggleChip(c)}>
                     {c}
                   </button>
                 ))}
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <span className="badge badge-verified"><Check /> Verified</span>
-              <span className="badge badge-known">Known</span>
-              <span className="badge badge-progress">In progress</span>
-              <span className="badge badge-todo">Not started</span>
-              <span className="badge badge-locked"><Lock /> Locked</span>
-              <span className="badge badge-needs-work"><Wrench /> Needs work</span>
-            </div>
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Loading</p>
+              <p className="text-sm text-text-mute">Loading</p>
               <div className="skeleton h-4 w-64 rounded-full" />
               <div className="skeleton h-4 w-44 rounded-full" />
             </div>
           </div>
         </div>
-      </section>
+      </Section>
 
-      {/* Node states and unlock chain */}
-      <section id="nodes">
-        <Heading note="Verified is the only node that glows. Known keeps its tint, in progress pulses, locked recedes.">
-          Node states
-        </Heading>
-        <ul className="flex flex-wrap items-start gap-x-10 gap-y-6">
-          {nodeKinds.map((k, i) => (
-            <li key={k.state} className="flex items-center gap-3">
-              <Node state={k.state} n={i + 1} />
-              <span>
-                <span className="block font-medium leading-tight">{k.label}</span>
-                <span className="text-sm text-muted-foreground">{k.note}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        <div className="surface-1 mt-10 p-6">
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-            <p className="font-medium">Unlock chain</p>
-            <button className="btn btn-glass btn-sm" onClick={() => setUnlock((u) => u + 1)}>
-              Play unlock
-            </button>
-          </div>
+      {/* Passport: the only light surface */}
+      <Section
+        title="The passport"
+        note="The credential is the one light surface. Newsreader appears here only. The seal stamps on once."
+      >
+        <div className="passport mx-auto max-w-2xl p-10 md:p-12">
           <motion.div
-            key={unlock}
-            variants={unlockChain(0.28, 0.1)}
-            initial="hidden"
+            key={`s${run}`}
+            variants={sealStamp}
+            initial={play.initial}
             animate="show"
-            className="flex items-center gap-3"
+            className="seal absolute right-10 top-10 size-24 text-center text-lg leading-tight"
+            aria-label="Valid"
           >
-            {(["verified", "known", "progress", "todo"] as NodeState[]).map((s, i) => (
-              <div key={s} className="flex flex-1 items-center gap-3 last:flex-none">
-                <motion.span variants={unlockStep} className="relative inline-flex">
-                  <Node state={s} n={i + 1} />
-                </motion.span>
-                {i < 3 && <span className="h-0.5 flex-1 rounded-full bg-border" />}
-              </div>
-            ))}
+            Valid
           </motion.div>
-          <div className="mt-8 flex items-center gap-4">
-            <span className="relative inline-flex">
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={() => setSpark((s) => s + 1)}
-              >
-                Approve project
-              </button>
-              <SparkBurst fire={spark} />
-            </span>
-            <span className="text-sm text-muted-foreground">Spark burst plays on approval.</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Glass: the credential and narrator card, plus tilt and count-up */}
-      <section id="glass">
-        <Heading note="Glass lives on three surfaces only: the floating nav above, the tour narrator card, and the credential.">
-          Glass and depth
-        </Heading>
-        <div className="grid items-start gap-8 lg:grid-cols-[1fr_1.1fr]">
-          <div className="glass rounded-surface p-6">
-            <p className="font-medium">Your next step</p>
-            <p className="measure mt-2 text-muted-foreground">
-              Build a small API that stores notes, then submit the repo link. A reviewer will run it.
-            </p>
-            <div className="mt-5 flex gap-2">
-              <button className="btn btn-primary btn-sm">Open the brief</button>
-              <button className="btn btn-ghost btn-sm">Skip tour</button>
+          <p className="text-sm italic" style={{ color: "var(--ink-soft)" }}>
+            Ladda credential
+          </p>
+          <h3 className="mt-2 max-w-[14ch] font-display text-5xl font-bold">Backend with Node.js</h3>
+          <p className="mt-6 text-lg">
+            This passport confirms that <em>Amina Bello</em> completed every required project and that each
+            one was reviewed.
+          </p>
+          <dl className="mt-8 grid grid-cols-2 gap-6 border-t border-[rgb(11_24_18/0.25)] pt-6">
+            <div>
+              <dt className="text-sm italic" style={{ color: "var(--ink-soft)" }}>Verified hours</dt>
+              <dd className="data text-xl font-semibold">96h</dd>
             </div>
-          </div>
-
-          <motion.div
-            {...tilt}
-            className="glass credential relative p-8"
-            onViewportEnter={() => setCounting(true)}
-          >
-            <span className="seal absolute right-6 top-6 grid size-16 place-items-center font-heading font-extrabold">
-              Valid
-            </span>
-            <p className="text-sm text-muted-foreground">Ladda credential</p>
-            <p className="display-md mt-2">Backend with Node.js</p>
-            <p className="mt-4 text-muted-foreground">Amina Bello completed every required project.</p>
-            <dl className="mt-8 grid grid-cols-2 gap-6">
-              <div>
-                <dt className="text-sm text-muted-foreground">Verified hours</dt>
-                <dd className="data text-2xl font-bold">{hours}h</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">Credential ID</dt>
-                <dd className="data text-lg">demo-001</dd>
-              </div>
-            </dl>
-            <p className="data mt-6 break-all text-muted-foreground">
-              sig 9f2ac3e18b47d05a6c1e
-            </p>
-          </motion.div>
+            <div>
+              <dt className="text-sm italic" style={{ color: "var(--ink-soft)" }}>Credential ID</dt>
+              <dd className="data text-xl font-semibold">demo-001</dd>
+            </div>
+          </dl>
+          <p className="data mt-6 break-all" style={{ color: "var(--ink-soft)" }}>
+            sig 9f2ac3e18b47d05a6c1e
+          </p>
+          <button className="btn btn-secondary mt-8" style={{ background: "transparent", color: "var(--ink)", borderColor: "var(--ink)" }} onClick={() => setRun((r) => r + 1)}>
+            Stamp again
+          </button>
         </div>
-      </section>
+      </Section>
     </main>
   );
 }
